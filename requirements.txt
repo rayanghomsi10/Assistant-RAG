@@ -1,0 +1,31 @@
+# --- LLM local & embeddings ---
+ollama
+sentence-transformers
+
+# --- Base vectorielle ---
+chromadb
+
+# --- Orchestration RAG ---
+langchain
+langchain-community
+langchain-ollama
+langchain-chroma
+langchain-text-splitters
+
+# --- API ---
+fastapi
+uvicorn[standard]
+pydantic
+
+# --- Évaluation ---
+ragas
+datasets
+
+# --- Suivi d'expérimentations ---
+mlflow
+
+# --- Ingestion / utilitaires ---
+pypdf
+reportlab
+requests
+python-dotenv
