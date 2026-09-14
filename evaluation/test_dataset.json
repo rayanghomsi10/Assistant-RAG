@@ -1,0 +1,62 @@
+[
+  {
+    "question": "Qu'est-ce qu'un modèle SQL dans dbt ?",
+    "ground_truth": "Un modèle SQL dbt est une simple instruction select, définie dans un fichier .sql (typiquement dans le dossier models). Chaque fichier .sql contient un seul modèle, et le nom du modèle est hérité du nom de fichier."
+  },
+  {
+    "question": "À quoi sert Jinja dans un projet dbt ?",
+    "ground_truth": "Jinja est un langage de templating combiné au SQL dans dbt. Il transforme le projet dbt en environnement de programmation pour le SQL : il permet d'utiliser des structures de contrôle (if, for), des variables d'environnement, et d'adapter la construction du projet selon la cible (target), alors que Jinja lui-même n'est pas un langage de programmation."
+  },
+  {
+    "question": "Quels types de tests de données (data tests) dbt propose-t-il par défaut ?",
+    "ground_truth": "Par défaut, dbt permet de tester si une colonne d'un modèle contient uniquement des valeurs non nulles, des valeurs uniques, des valeurs correspondant à une valeur dans un autre modèle (relation, par exemple un customer_id qui correspond à un id dans le modèle customers), et des valeurs issues d'une liste spécifiée. Ces tests peuvent être étendus pour de la logique métier spécifique."
+  },
+  {
+    "question": "Comment dbt appelle-t-il maintenant ce qui était appelé 'tests' auparavant ?",
+    "ground_truth": "Ce qui était appelé 'tests' est maintenant appelé 'data tests' (tests de données), pour les distinguer des 'unit tests' (tests unitaires). La clé YAML 'tests:' reste supportée comme alias de 'data_tests:'."
+  },
+  {
+    "question": "Quels sont les cinq types de matérialisations intégrés à dbt ?",
+    "ground_truth": "Les cinq types de matérialisations intégrés à dbt sont : table, view, incremental, ephemeral, et materialized view. Des matérialisations personnalisées (custom materializations) peuvent aussi être configurées."
+  },
+  {
+    "question": "Quelle est la matérialisation par défaut d'un modèle dbt ?",
+    "ground_truth": "Par défaut, les modèles dbt sont matérialisés en tant que 'views' (vues)."
+  },
+  {
+    "question": "Qu'est-ce qu'un modèle incrémental (incremental model) en dbt ?",
+    "ground_truth": "Un modèle incrémental est une stratégie de matérialisation en dbt qui permet de mettre à jour seulement les lignes nouvelles ou modifiées depuis la dernière exécution, plutôt que de reconstruire toute la table à chaque run, ce qui est optimisé via la configuration on_schema_change et d'autres paramètres."
+  },
+  {
+    "question": "Qu'est-ce qu'un Dag dans Apache Airflow ?",
+    "ground_truth": "Un Dag (Directed Acyclic Graph) est un modèle qui encapsule tout ce qui est nécessaire pour exécuter un workflow : son schedule (quand le workflow doit s'exécuter), ses tasks (unités de travail discrètes exécutées par des workers), les dépendances entre tasks (l'ordre et les conditions d'exécution), les callbacks, et d'autres paramètres opérationnels."
+  },
+  {
+    "question": "Qu'est-ce qu'un Operator dans Airflow ?",
+    "ground_truth": "Un Operator est conceptuellement un template pour une Task prédéfinie, que l'on peut définir de façon déclarative dans un Dag. Des exemples d'opérateurs du cœur d'Airflow incluent BashOperator (exécute une commande bash) et PythonOperator (appelle une fonction Python arbitraire) ; le décorateur @task est aujourd'hui recommandé à la place de PythonOperator classique."
+  },
+  {
+    "question": "À quelle fréquence le scheduler Airflow vérifie-t-il par défaut si des tâches peuvent être déclenchées ?",
+    "ground_truth": "Par défaut, une fois par minute, le scheduler Airflow collecte les résultats du parsing des Dags et vérifie si des tâches actives peuvent être déclenchées."
+  },
+  {
+    "question": "Comment démarre-t-on le scheduler Airflow, et sur quelle configuration se base-t-il ?",
+    "ground_truth": "On démarre le scheduler Airflow en exécutant la commande 'airflow scheduler'. Il utilise la configuration spécifiée dans le fichier airflow.cfg, et utilise l'Executor configuré pour exécuter les tâches prêtes."
+  },
+  {
+    "question": "Qu'est-ce qu'un XCom dans Airflow et à quoi sert-il ?",
+    "ground_truth": "Un XCom (cross-communication) est un mécanisme qui permet à des Tasks de communiquer entre elles, puisque par défaut les Tasks sont totalement isolées et peuvent tourner sur des machines différentes. Un XCom est identifié par une clé (key), ainsi que le task_id et le dag_id d'origine. Les XComs ne sont conçus que pour de petites quantités de données (pas des dataframes volumineux) et sont explicitement 'push' et 'pull' via les méthodes xcom_push et xcom_pull."
+  },
+  {
+    "question": "Comment pousse-t-on une valeur dans un XCom depuis une tâche Airflow ?",
+    "ground_truth": "On pousse une valeur dans un XCom en appelant la méthode xcom_push sur l'instance de tâche (task_instance), en lui passant une clé (key) et une valeur sérialisable. Les opérations XCom doivent être effectuées via le Task Context (get_current_context()), et non directement via le modèle de base de données XCom."
+  },
+  {
+    "question": "Pourquoi les tâches Airflow doivent-elles être idempotentes selon les bonnes pratiques ?",
+    "ground_truth": "Selon les bonnes pratiques Airflow, les tâches doivent être idempotentes : ré-exécuter la même tâche avec les mêmes entrées doit produire le même résultat, sans effets de bord supplémentaires, ce qui permet de relancer une tâche en cas d'échec ou de re-run sans corrompre les données ou dupliquer des effets."
+  },
+  {
+    "question": "Le corpus de ce projet contient-il des rapports financiers d'entreprises ?",
+    "ground_truth": "Non. Le corpus de ce projet est limité à la documentation officielle dbt et Apache Airflow ; le système est configuré pour répondre uniquement à partir de ce contexte et pour indiquer explicitement qu'il ne trouve pas l'information si la question sort de ce périmètre."
+  }
+]

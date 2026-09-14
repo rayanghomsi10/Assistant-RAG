@@ -1,0 +1,22 @@
+# NB: la stack originale du guide prévoyait Qdrant + API. Ce projet utilise ChromaDB
+# en mode "persistent client" (pas de serveur séparé) pour rester à zéro dépendance
+# Docker côté base vectorielle — elle vit simplement comme fichiers dans ./chroma_db,
+# monté en volume dans le conteneur API. Ollama tourne sur la machine hôte (accès GPU),
+# le conteneur le contacte via host.docker.internal.
+services:
+  api:
+    build: .
+    container_name: rag-genai-eval-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-llama3.1:8b}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      - CHROMA_PERSIST_DIR=/app/chroma_db
+    volumes:
+      - ./corpus:/app/corpus
+      - ./chroma_db:/app/chroma_db
+      - ./ingestion/chunks.json:/app/ingestion/chunks.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

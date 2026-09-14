@@ -1,31 +1,34 @@
+# Versions figées après test réel du pipeline de bout en bout (voir README, section
+# "Limites connues" pour le correctif de compatibilité ragas <-> langchain-community).
+
 # --- LLM local & embeddings ---
-ollama
-sentence-transformers
+ollama==0.6.2
+sentence-transformers==6.0.1
 
 # --- Base vectorielle ---
-chromadb
+chromadb==1.5.9
 
 # --- Orchestration RAG ---
-langchain
-langchain-community
-langchain-ollama
-langchain-chroma
-langchain-text-splitters
+langchain==1.4.0
+langchain-community==0.4.2
+langchain-ollama==1.1.0
+langchain-chroma==1.1.0
+langchain-text-splitters==1.1.2
 
 # --- API ---
-fastapi
-uvicorn[standard]
-pydantic
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.5
 
 # --- Évaluation ---
-ragas
-datasets
+ragas==0.4.3
+datasets==5.0.1
 
 # --- Suivi d'expérimentations ---
-mlflow
+mlflow==3.16.0
 
 # --- Ingestion / utilitaires ---
-pypdf
-reportlab
-requests
-python-dotenv
+pypdf==6.18.1
+reportlab==5.0.1
+requests==2.34.2
+python-dotenv==1.2.3
