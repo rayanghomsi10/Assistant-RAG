@@ -78,9 +78,11 @@ ollama pull llama3.1:8b
 > d'Ollama (11434) peut être réservé par le système (`netsh interface ipv4 show
 > excludedportrange protocol=tcp`), provoquant une erreur `bind: An attempt was made to access a
 > socket in a way forbidden by its access permissions`. Dans ce cas, démarrer Ollama sur un autre
-> port : `OLLAMA_HOST=127.0.0.1:12500 ollama serve`, et renseigner `OLLAMA_BASE_URL` en
-> conséquence dans `.env`. Le même problème peut survenir avec le port 8000 de l'API — utiliser
-> un autre port (`uvicorn api.main:app --port 8600`) le cas échéant.
+> port : `OLLAMA_HOST=127.0.0.1:12500 ollama serve`, et renseigner `OLLAMA_BASE_URL` (et
+> `OLLAMA_BASE_URL_DOCKER` pour Docker) en conséquence dans `.env`. Le même problème peut
+> survenir avec le port 8000 de l'API — utiliser un autre port (`uvicorn api.main:app --port
+> 8600`, ou `HOST_PORT` dans `.env` pour Docker) le cas échéant. Vérifier les plages réservées
+> avec `netsh interface ipv4 show excludedportrange protocol=tcp`.
 
 ## Utilisation
 
@@ -100,8 +102,18 @@ uvicorn api.main:app --reload --port 8000
 
 # 5. Boucle d'évaluation (Ragas + MLflow)
 python evaluation/run_ragas_eval.py --run-name "ma_config"
-mlflow ui --backend-store-uri ./mlruns   # puis ouvrir http://127.0.0.1:5000
+mlflow ui --backend-store-uri sqlite:///mlruns.db   # puis ouvrir http://127.0.0.1:5000
 ```
+
+### Avec Docker
+
+```bash
+docker compose up -d --build
+curl http://127.0.0.1:8600/health
+```
+L'API tourne dans le conteneur (port hôte 8600 par défaut, voir `HOST_PORT` dans `.env`),
+ChromaDB persiste dans `./chroma_db` (monté en volume), et le conteneur contacte Ollama sur la
+machine hôte via `OLLAMA_BASE_URL_DOCKER` (voir `.env.example`).
 
 Exemple d'appel API :
 ```bash
@@ -177,6 +189,11 @@ comparaison entre configurations : `mlflow ui --backend-store-uri sqlite:///mlru
 - **ChromaDB plutôt que Qdrant** : choix fait pour rester à zéro dépendance Docker côté base
   vectorielle. `docker-compose.yml` conteneurise l'API ; ChromaDB persiste en fichiers locaux
   montés en volume.
+- **`docker run -v` sous Git Bash (Windows)** : passer des volumes en ligne de commande
+  (`docker run -v $(pwd)/...`) sous Git Bash déclenche une conversion de chemin MSYS qui corrompt
+  le chemin de destination dans le conteneur. `docker compose up` (les chemins viennent du YAML,
+  pas de la ligne de commande) n'a pas ce problème — c'est la méthode recommandée sur cette
+  configuration.
 
 ## Structure du dépôt
 

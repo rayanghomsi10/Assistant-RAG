@@ -8,7 +8,9 @@ services:
     build: .
     container_name: rag-genai-eval-api
     ports:
-      - "8000:8000"
+      # NB: le port hôte 8000 peut être réservé par Windows (Hyper-V/WSL2, voir README) —
+      # on publie sur 8600 par défaut, adaptable via HOST_PORT dans .env.
+      - "${HOST_PORT:-8600}:8000"
     environment:
       # NB: on ne réutilise pas OLLAMA_BASE_URL du .env directement : cette variable, utilisée
       # par les scripts Python lancés en local, pointe vers 127.0.0.1 (ou un port alternatif si
