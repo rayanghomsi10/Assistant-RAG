@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.env
+chroma_db/
+mlruns/
+mlruns.db
+mlartifacts/
+corpus/raw_text/
+.git/

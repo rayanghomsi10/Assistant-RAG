@@ -4,6 +4,7 @@ __pycache__/
 .env
 chroma_db/
 mlruns/
+mlruns.db
 mlartifacts/
 corpus/raw_text/
 *.log

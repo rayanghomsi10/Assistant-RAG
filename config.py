@@ -38,5 +38,7 @@ CHUNKS_PATH = ROOT_DIR / "ingestion" / "chunks.json"
 TOP_K = int(os.getenv("TOP_K", "4"))
 
 # --- MLflow ---
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", str(ROOT_DIR / "mlruns"))
+# NB: MLflow >= 3.x a mis le backend "filesystem" (./mlruns) en mode maintenance et recommande
+# un backend SQLite, même en local (voir https://mlflow.org/docs/latest/self-hosting/migrate-from-file-store).
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{ROOT_DIR / 'mlruns.db'}")
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "rag-genai-eval")

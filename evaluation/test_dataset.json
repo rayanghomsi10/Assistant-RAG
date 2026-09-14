@@ -52,8 +52,8 @@
     "ground_truth": "On pousse une valeur dans un XCom en appelant la méthode xcom_push sur l'instance de tâche (task_instance), en lui passant une clé (key) et une valeur sérialisable. Les opérations XCom doivent être effectuées via le Task Context (get_current_context()), et non directement via le modèle de base de données XCom."
   },
   {
-    "question": "Pourquoi les tâches Airflow doivent-elles être idempotentes selon les bonnes pratiques ?",
-    "ground_truth": "Selon les bonnes pratiques Airflow, les tâches doivent être idempotentes : ré-exécuter la même tâche avec les mêmes entrées doit produire le même résultat, sans effets de bord supplémentaires, ce qui permet de relancer une tâche en cas d'échec ou de re-run sans corrompre les données ou dupliquer des effets."
+    "question": "Pourquoi les XComs d'une tâche sont-ils effacés automatiquement à chaque nouvelle tentative (retry) ?",
+    "ground_truth": "Si la première tentative d'exécution de la tâche n'a pas réussi, alors à chaque nouvelle tentative (retry), les XComs de la tâche sont effacés, afin de rendre l'exécution de la tâche idempotente. Les XComs ne peuvent donc pas être utilisés pour persister un état entre les tentatives de retry ou les 'pokes' d'un Sensor."
   },
   {
     "question": "Le corpus de ce projet contient-il des rapports financiers d'entreprises ?",

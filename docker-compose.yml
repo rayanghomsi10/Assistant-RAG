@@ -10,7 +10,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # NB: on ne réutilise pas OLLAMA_BASE_URL du .env directement : cette variable, utilisée
+      # par les scripts Python lancés en local, pointe vers 127.0.0.1 (ou un port alternatif si
+      # 11434 est réservé par le système, voir .env.example). Depuis l'intérieur du conteneur,
+      # 127.0.0.1 désignerait le conteneur lui-même et non l'hôte — il faut donc une variable
+      # dédiée qui utilise host.docker.internal.
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434}
       - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-llama3.1:8b}
       - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
       - CHROMA_PERSIST_DIR=/app/chroma_db

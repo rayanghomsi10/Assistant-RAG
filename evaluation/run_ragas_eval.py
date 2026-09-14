@@ -14,7 +14,7 @@ import _ragas_compat  # noqa: F401 - doit précéder `import ragas` (voir ce mod
 from datasets import Dataset
 from langchain_core.embeddings import Embeddings
 from langchain_ollama import ChatOllama
-from ragas import evaluate
+from ragas import RunConfig, evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import answer_relevancy, context_precision, faithfulness
@@ -80,11 +80,17 @@ def main(run_name: str | None = None) -> dict:
     dataset = Dataset.from_list(rows)
 
     print("\nÉvaluation Ragas en cours (LLM juge = Ollama local, ça peut prendre plusieurs minutes)...")
+    # Ollama local sert les requêtes en série (OLLAMA_NUM_PARALLEL=1 par défaut). Le max_workers
+    # par défaut de Ragas (16) sature la file d'attente et déclenche des TimeoutError avant que
+    # les requêtes en fin de file n'aient eu le temps d'être traitées : on limite donc la
+    # concurrence et on augmente le budget de temps par requête.
+    run_config = RunConfig(timeout=300, max_workers=2, max_retries=3, max_wait=30)
     result = evaluate(
         dataset=dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
         llm=get_judge_llm(),
         embeddings=get_judge_embeddings(),
+        run_config=run_config,
     )
 
     df = result.to_pandas()
