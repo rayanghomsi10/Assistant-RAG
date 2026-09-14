@@ -1,5 +1,5 @@
 """
-Étape 6 de la feuille de route : exposition via une API FastAPI.
+Étape 6 du pipeline : exposition du système via une API REST FastAPI.
 
 Lancer avec : uvicorn api.main:app --reload --port 8000
 Documentation Swagger auto-générée sur : http://127.0.0.1:8000/docs

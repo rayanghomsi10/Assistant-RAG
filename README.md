@@ -59,6 +59,11 @@ data tests, modèles incrémentaux, matérialisations) et **Apache Airflow** (DA
 scheduler, XComs, bonnes pratiques) — un seul domaine cohérent (outillage data engineering),
 comme recommandé pour une V1. Voir `corpus/*.pdf`.
 
+Le corpus est reproductible : `ingestion/build_corpus.py` télécharge les pages, en extrait le
+contenu principal (navigation, pieds de page et artefacts de mise en page retirés) et génère les
+PDF. Les PDF produits contiennent bien une couche de texte extractible (aucun scan), condition
+nécessaire à l'ingestion.
+
 ## Installation
 
 ```bash
@@ -87,6 +92,9 @@ ollama pull llama3.1:8b
 ## Utilisation
 
 ```bash
+# 0. (optionnel) Reconstruire le corpus depuis les docs en ligne — les PDF sont déjà versionnés
+python ingestion/build_corpus.py
+
 # 1. Ingestion : PDF -> chunks
 python ingestion/chunking.py
 
@@ -134,12 +142,12 @@ Configuration de référence : chunking 500 tokens / overlap 50, `all-MiniLM-L6-
 | Context precision | **0.987** | Les chunks les plus pertinents sont-ils bien classés en tête du retrieval ? |
 
 *(run `baseline_chunk500_overlap50_v2_fixed_dataset`, 15/15 questions évaluées sans erreur — voir
-`evaluation/last_eval_results.csv` pour le détail par question.)*
+`evaluation/results/baseline_chunk500_overlap50_v2_fixed_dataset.csv` pour le détail par question.)*
 
 **Lecture des résultats** : le retrieval est excellent (context precision quasi parfaite — les
 bons chunks remontent bien en tête), ce qui valide le choix de chunking et d'embeddings. La
-faithfulness est bonne (0.82) : les réponses inspectées manuellement dans
-`last_eval_results.csv` sont bien ancrées dans le contexte récupéré, y compris sur des réponses
+faithfulness est bonne (0.82) : les réponses inspectées manuellement dans le CSV de résultats
+sont bien ancrées dans le contexte récupéré, y compris sur des réponses
 factuellement correctes et vérifiées (ex. `xcom_push`, fréquence du scheduler). L'answer
 relevancy est en revanche systématiquement plus basse (0.58 en moyenne, parfois 0.22-0.37 sur des
 réponses par ailleurs correctes et fidèles à 100%) — en creusant, ce n'est pas la qualité des
@@ -153,16 +161,42 @@ défaut du pipeline RAG lui-même. Un vrai cas de refus correct existe aussi dan
 cette information", ce qui est le comportement voulu, mais fait mécaniquement chuter les deux
 métriques à 0 sur cette ligne faute de contenu à évaluer.
 
-Résultats détaillés par question : `evaluation/last_eval_results.csv`. Historique des runs et
-comparaison entre configurations : `mlflow ui --backend-store-uri sqlite:///mlruns.db`.
+Résultats détaillés par question : `evaluation/results/<nom_du_run>.csv` (un fichier par
+expérience). Historique des runs et comparaison : `mlflow ui --backend-store-uri sqlite:///mlruns.db`.
+
+### Itération : effet de la taille de chunk
+
+Deuxième configuration testée pour mesurer l'impact du chunking, à corpus, prompt, modèle et jeu
+de test identiques — seuls la taille de chunk et le chevauchement changent :
+
+| Config | Chunks indexés | Faithfulness | Answer relevancy | Context precision |
+|---|---|---|---|---|
+| **500 tokens / overlap 50** (retenue) | 126 | **0.818** | 0.581 | **0.987** |
+| 300 tokens / overlap 30 | 221 | 0.748 | **0.629** | 0.963 |
+
+**Conclusion** : des chunks plus petits améliorent légèrement l'answer relevancy (+0.05 — des
+passages plus courts et plus ciblés donnent des réponses plus directes), mais dégradent la
+faithfulness (−0.07) et la context precision (−0.02). L'explication la plus probable : en
+découpant à 300 tokens, un passage explicatif est plus souvent coupé en deux, le modèle reçoit
+des fragments incomplets et comble les trous — exactement ce que la faithfulness pénalise. La
+configuration **500/50 est donc retenue** comme référence, la fidélité au contexte primant sur
+la formulation dans un système RAG dont l'intérêt est précisément l'ancrage dans les sources.
 
 ## Limites connues
 
 - **Chunking simple** : découpage par taille fixe (500 tokens / overlap 50), pas de chunking
-  sémantique ou structurel. C'est un choix volontaire de V1 (voir feuille de route du projet) —
-  premier axe d'itération naturel pour améliorer `context_precision`.
+  sémantique ou structurel. C'est un choix volontaire de V1. La context precision étant déjà à
+  0.987, le gain restant n'est pas côté retrieval mais côté génération : un chunking respectant
+  les frontières de sections (plutôt qu'une coupe à taille fixe au milieu d'une explication)
+  viserait surtout à faire monter la faithfulness — c'est ce que suggère l'itération 300/30
+  ci-dessus, où des coupes plus fréquentes l'ont dégradée.
 - **Corpus restreint** : 10 documents, un seul domaine (dbt/Airflow). Le système répond "je ne
   trouve pas cette information" en dehors de ce périmètre par construction du prompt.
+- **Citations reformulées** : sur certaines réponses, le modèle présente entre guillemets un
+  passage qui n'est pas verbatim dans le contexte — le fond reste correct et ancré, mais la
+  citation est reformulée. C'est une des causes concrètes d'une faithfulness à 0.82 plutôt que
+  plus haute. Piste d'amélioration : interdire explicitement les guillemets dans le prompt
+  système, ou n'autoriser que des citations vérifiées par correspondance exacte avec le contexte.
 - **LLM juge = LLM générateur** : Ragas utilise le même modèle (`llama3.1:8b` via Ollama) comme
   juge que comme générateur, faute d'API payante. Un juge plus puissant (ou un juge différent du
   générateur) donnerait des scores plus fiables et moins sujets à un biais d'auto-évaluation —
@@ -180,8 +214,9 @@ comparaison entre configurations : `mlflow ui --backend-store-uri sqlite:///mlru
   (`OLLAMA_NUM_PARALLEL=1`) — la configuration par défaut provoque des `TimeoutError` sur une
   partie des questions. Corrigé en réduisant la concurrence et en augmentant le timeout
   (`RunConfig(max_workers=2, timeout=300)` dans `run_ragas_eval.py`).
-- **Latence** : ~2-8s par requête une fois le modèle chargé en VRAM (~40-70s au premier appel, le
-  temps de charger le modèle) sur un GPU 8 Go. Sans GPU, la latence serait nettement plus élevée.
+- **Latence** : mesurée entre ~2s et ~12s par requête selon la longueur de la réponse, une fois
+  le modèle chargé en VRAM (comptez ~40-70s au tout premier appel, le temps du chargement) sur un
+  GPU 8 Go. Sans GPU, la latence serait nettement plus élevée.
 - **Compatibilité ragas 0.4.3 / langchain-community** : `ragas` importe de façon inconditionnelle
   un module VertexAI que `langchain-community` (en cours de dépréciation) a retiré. Contournement
   documenté et appliqué dans `evaluation/_ragas_compat.py` (aucun impact fonctionnel, le projet
@@ -200,13 +235,15 @@ comparaison entre configurations : `mlflow ui --backend-store-uri sqlite:///mlru
 ```
 rag-genai-eval/
 ├── README.md
-├── config.py                  # configuration centrale (env vars)
-├── corpus/                    # 10 PDF (documentation dbt + Airflow)
+├── config.py                   # configuration centrale (surchargeable par variables d'env)
+├── .env.example                # modèle de configuration locale
+├── corpus/                     # 10 PDF (documentation dbt + Airflow)
 ├── ingestion/
-│   ├── chunking.py            # PDF -> chunks (taille fixe + overlap)
-│   └── embeddings.py          # sentence-transformers (local)
+│   ├── chunking.py             # PDF -> chunks (taille fixe + overlap)
+│   ├── embeddings.py           # sentence-transformers (local)
+│   └── chunks.json             # artefact d'ingestion (généré par chunking.py)
 ├── retrieval/
-│   └── vector_store.py        # ChromaDB : indexation + recherche par similarité
+│   └── vector_store.py         # ChromaDB : indexation + recherche par similarité
 ├── rag_chain/
 │   └── chain.py                # LangChain LCEL : retriever -> prompt -> LLM
 ├── api/
@@ -215,8 +252,13 @@ rag-genai-eval/
 │   ├── test_dataset.json       # 15 questions/réponses de référence
 │   ├── run_ragas_eval.py       # boucle d'évaluation Ragas
 │   ├── mlflow_tracking.py      # log des runs dans MLflow
-│   └── last_eval_results.csv   # résultats détaillés du dernier run
+│   ├── _ragas_compat.py        # correctif d'import ragas/langchain-community
+│   └── results/                # résultats détaillés, un CSV par run
 ├── Dockerfile
+├── .dockerignore
 ├── docker-compose.yml
 └── requirements.txt
 ```
+
+Non versionnés (voir `.gitignore`) : `venv/`, `chroma_db/` (index vectoriel, reconstructible via
+`retrieval/vector_store.py`), `mlruns.db` (historique MLflow local), `.env`, `corpus/raw_text/`.

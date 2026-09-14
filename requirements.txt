@@ -30,5 +30,6 @@ mlflow==3.16.0
 # --- Ingestion / utilitaires ---
 pypdf==6.18.1
 reportlab==5.0.1
+beautifulsoup4==4.15.0
 requests==2.34.2
 python-dotenv==1.2.3

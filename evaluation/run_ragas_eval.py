@@ -1,5 +1,5 @@
 """
-Étape 7 de la feuille de route : boucle d'évaluation Ragas + MLflow.
+Étape 7 du pipeline : boucle d'évaluation Ragas + suivi MLflow.
 
 Calcule faithfulness, answer_relevancy et context_precision sur le jeu de questions
 de référence (evaluation/test_dataset.json), en utilisant le LLM Ollama local comme juge
@@ -7,6 +7,7 @@ de référence (evaluation/test_dataset.json), en utilisant le LLM Ollama local 
 """
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -26,7 +27,15 @@ from ingestion.embeddings import embed_query, embed_texts
 from rag_chain.chain import answer_question
 
 TEST_DATASET_PATH = Path(__file__).parent / "test_dataset.json"
-RESULTS_PATH = Path(__file__).parent / "last_eval_results.csv"
+RESULTS_DIR = Path(__file__).parent / "results"
+
+
+def results_path_for(run_name: str | None) -> Path:
+    """Un fichier de résultats par run : sinon une nouvelle expérience écrase les résultats
+    détaillés de la précédente, alors que MLflow, lui, garde bien les deux runs — on perdrait
+    la possibilité de comparer les scores question par question entre deux configurations."""
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", run_name) if run_name else "run_sans_nom"
+    return RESULTS_DIR / f"{safe_name}.csv"
 
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
@@ -62,7 +71,8 @@ def run_pipeline_on_dataset(qa_pairs: list[dict]) -> list[dict]:
 
 
 def get_judge_llm() -> LangchainLLMWrapper:
-    """LLM juge local via Ollama, plutôt qu'une API payante (voir guide, section E)."""
+    """LLM juge local via Ollama, plutôt qu'une API payante. Limite assumée : le juge est le
+    même modèle que le générateur, ce qui introduit un biais d'auto-évaluation (voir README)."""
     chat = ChatOllama(base_url=OLLAMA_BASE_URL, model=OLLAMA_LLM_MODEL, temperature=0.0)
     return LangchainLLMWrapper(chat)
 
@@ -94,8 +104,10 @@ def main(run_name: str | None = None) -> dict:
     )
 
     df = result.to_pandas()
-    df.to_csv(RESULTS_PATH, index=False)
-    print(f"\nRésultats détaillés (par question) sauvegardés dans {RESULTS_PATH}")
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    results_path = results_path_for(run_name)
+    df.to_csv(results_path, index=False)
+    print(f"\nRésultats détaillés (par question) sauvegardés dans {results_path}")
 
     scores = {
         "faithfulness": df["faithfulness"].mean(),

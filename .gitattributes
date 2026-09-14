@@ -1,0 +1,6 @@
+# Fins de ligne normalisées en LF dans le dépôt, quelle que soit la plateforme de travail
+# (évite des diffs entiers de fichiers quand un outil Windows réécrit un fichier en CRLF).
+* text=auto eol=lf
+
+# Fichiers binaires : jamais de conversion
+*.pdf binary

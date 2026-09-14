@@ -1,9 +1,10 @@
 """
-Étape 4 de la feuille de route : base vectorielle (ChromaDB, en local, sans Docker).
+Étape 4 du pipeline : base vectorielle (ChromaDB, en local, sans Docker).
 
 Indexe les chunks générés par ingestion/chunking.py et expose une fonction de recherche
 par similarité, utilisable seule (sans LLM) pour valider le retrieval avant de brancher
-la génération — c'est le piège à éviter n°1 selon le guide.
+la génération : sans cette validation séparée, impossible de savoir si une mauvaise réponse
+vient de la recherche ou du modèle.
 """
 import json
 import sys
@@ -76,12 +77,14 @@ def main():
     n = index_chunks()
     print(f"{n} chunks indexés dans ChromaDB (collection '{CHROMA_COLLECTION_NAME}', dossier {CHROMA_PERSIST_DIR})")
 
-    # Questions test manuelles pour valider le retrieval seul, comme demandé par le guide
-    # avant de brancher le LLM.
+    # Validation manuelle du retrieval seul, avant toute intervention du LLM.
     test_queries = [
-        "Comment fonctionne le chevauchement (overlap) dans le chunking dbt ?",
+        "À quoi sert Jinja dans un projet dbt ?",
         "Qu'est-ce qu'un XCom dans Airflow ?",
         "Quelle est la différence entre view et table comme matérialisation dbt ?",
+        # Question volontairement hors corpus : sert de témoin, les distances doivent être
+        # nettement plus élevées que pour les trois questions ci-dessus.
+        "Quel est le chiffre d'affaires de TotalEnergies en 2024 ?",
     ]
     print("\n--- Vérification manuelle du retrieval (sans LLM) ---")
     for q in test_queries:

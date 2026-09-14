@@ -1,9 +1,12 @@
 """
-Étape 3 de la feuille de route : pipeline d'ingestion.
+Étape 3 du pipeline : ingestion des documents.
 
 Un document PDF en entrée -> chunks de texte en sortie.
-Chunking simple par taille fixe (~500 tokens) avec chevauchement (~50 tokens),
-comme recommandé dans le guide pour une V1 (pas de chunking sémantique prématuré).
+
+Chunking simple par taille fixe (~500 tokens) avec chevauchement (~50 tokens) : un découpage
+simple qui fonctionne vaut mieux qu'un découpage complexe (sémantique ou par structure)
+introduit prématurément. C'est le paramètre à faire varier ensuite, mesures à l'appui
+(voir README, section "Itération : effet de la taille de chunk").
 """
 import json
 import sys

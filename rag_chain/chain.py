@@ -1,5 +1,5 @@
 """
-Étape 5 de la feuille de route : chaîne RAG complète.
+Étape 5 du pipeline : chaîne RAG complète.
 
 Pattern retriever -> prompt template -> LLM -> parsing de sortie, assemblé avec
 LangChain Expression Language (LCEL). Le prompt impose au modèle de répondre
