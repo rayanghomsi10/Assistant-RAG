@@ -1,116 +1,120 @@
 # Assistant RAG & Évaluation d'IA Générative
 
+[![CI/CD](https://github.com/rayanghomsi10/Assistant-RAG/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/rayanghomsi10/Assistant-RAG/actions/workflows/ci-cd.yml)
+
 Système de questions-réponses (RAG) sur la documentation officielle **dbt** et **Apache Airflow**,
-avec une boucle d'évaluation mesurée (Ragas) et un suivi d'expérimentations (MLflow).
-Stack 100% gratuite et locale : aucun appel à une API payante, tout tourne sur la machine
-(LLM via Ollama, embeddings via sentence-transformers, base vectorielle ChromaDB).
+avec un protocole d'évaluation fiable (métriques déterministes, Ragas avec juge indépendant,
+intervalles de confiance), un suivi d'expérimentations MLflow, et une boucle d'alignement du
+générateur par **DPO** (Direct Preference Optimization) sur des préférences vérifiables.
+
+Stack gratuite et locale pour l'inférence : LLM via Ollama, embeddings et reranker via
+sentence-transformers, base vectorielle ChromaDB. Seul l'entraînement DPO demande un GPU de
+16 Go (Colab ou Kaggle gratuits).
 
 ## Pourquoi ce projet
 
-Un LLM seul hallucine et a une connaissance figée à sa date d'entraînement. Le RAG résout ça en
-injectant, au moment de la requête, des passages de documents pertinents dans le prompt — le
-modèle génère alors une réponse ancrée dans une source vérifiable. Ce projet ne se contente pas
-de faire fonctionner un chatbot : il mesure objectivement la qualité des réponses générées
-(fidélité au contexte, pertinence, précision du retrieval) avec le framework Ragas, et suit ces
-scores dans le temps avec MLflow pour comparer les versions du pipeline.
+Un LLM seul hallucine et a une connaissance figée. Le RAG injecte au moment de la requête des
+passages de documents pertinents dans le prompt, pour ancrer la réponse dans une source
+vérifiable. Ce projet ne s'arrête pas au chatbot qui fonctionne : il mesure la qualité des
+réponses, distingue ce qui relève du retrieval et de la génération, sépare le signal du bruit
+statistique, et n'améliore le modèle qu'avec un signal de récompense qu'on peut vérifier.
 
 ## Architecture
 
 ```
-                         ┌─────────────────────┐
-   corpus/*.pdf  ───────▶│  ingestion/          │
-  (dbt + Airflow docs)   │  chunking.py         │  chunks (~500 tokens, overlap 50)
-                         │  embeddings.py        │  vecteurs (sentence-transformers, local)
-                         └──────────┬───────────┘
-                                    ▼
-                         ┌─────────────────────┐
-                         │  retrieval/          │
-                         │  vector_store.py      │  ChromaDB (persistent, local, HNSW)
-                         └──────────┬───────────┘
-                                    ▼
-        question ──────▶ ┌─────────────────────┐
-                         │  rag_chain/chain.py   │  retriever → prompt → Ollama (llama3.1:8b) → réponse
-                         └──────────┬───────────┘
-                                    ▼
-                         ┌─────────────────────┐        ┌───────────────────────────┐
-                         │  api/main.py          │        │  evaluation/               │
-                         │  FastAPI POST /query  │        │  run_ragas_eval.py          │──▶ MLflow
-                         └─────────────────────┘        │  (juge = Ollama local)      │
-                                                          └───────────────────────────┘
+  sources officielles (dépôts dbt-labs/docs.getdbt.com et apache/airflow, versions figées)
+        │  ingestion/build_corpus.py      MDX / reStructuredText -> Markdown propre (corpus/*.md)
+        ▼
+  ingestion/chunking.py                   chunks par sections + fil d'Ariane (≤ 400 tokens)
+        ▼
+  retrieval/vector_store.py               multilingual-e5 -> ChromaDB (top 20)
+        │                                 -> reranker cross-encoder multilingue (top 4)
+        ▼
+  rag_chain/chain.py                      prompt (sources citées, refus explicite) -> Ollama
+        │
+        ├── api/main.py                   FastAPI POST /query, GET /health
+        │
+        ├── evaluation/                   métriques déterministes + Ragas (juge distinct)
+        │                                 + IC bootstrap -> MLflow ; compare_runs.py
+        │
+        └── training/                     questions -> réponses on-policy -> récompense
+                                          vérifiable -> paires -> DPO QLoRA -> Ollama
 ```
 
 ## Stack technique
 
 | Brique | Outil | Notes |
 |---|---|---|
-| Modèle de langage | Ollama + Llama 3.1 8B (Q4_K_M) | Génération, exécuté en local sur GPU |
-| Embeddings | sentence-transformers (`all-MiniLM-L6-v2`) | Vectorisation des chunks et des questions |
-| Base vectorielle | ChromaDB (persistent client, sans Docker) | Recherche par similarité cosinus (HNSW) |
-| Orchestration RAG | LangChain (LCEL) | retriever → prompt template → LLM |
-| API | FastAPI | `POST /query`, doc Swagger auto-générée |
-| Évaluation | Ragas | faithfulness, answer_relevancy, context_precision — juge = Ollama local |
-| Suivi d'expérimentations | MLflow | historique des scores entre versions du pipeline |
-| Conteneurisation | Docker | API conteneurisée, ChromaDB en volume local |
+| Générateur | Ollama + Llama 3.1 8B (Q4_K_M) | `num_ctx` explicite (8192) : sinon le prompt peut être tronqué sans erreur |
+| Embeddings | `intfloat/multilingual-e5-small` | Questions en français, corpus en anglais : modèle multilingue, préfixes `query:` / `passage:` |
+| Reranker | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Multilingue, léger ; recherche vectorielle large (20) puis top 4 |
+| Base vectorielle | ChromaDB (client persistant) | La configuration d'indexation est stockée dans la collection et vérifiée à chaque recherche |
+| Orchestration | LangChain (LCEL) | Un seul prompt, partagé par l'inférence et l'entraînement |
+| API | FastAPI | Sources citées vs récupérées, (ré)indexation automatique au démarrage |
+| Évaluation | Métriques déterministes + Ragas | Juge `qwen2.5:7b`, distinct du générateur ; IC bootstrap à 95 % |
+| Suivi | MLflow (SQLite) | Configuration réellement indexée, commit git, empreinte du jeu d'éval, artefacts |
+| Alignement | TRL (DPO) + PEFT (QLoRA) | Llama 3.1 8B Instruct, sur GPU Colab/Kaggle ; export vers Ollama |
+| CI/CD | GitHub Actions + GHCR | Lint, tests, corpus reproductible, image Docker publiée |
 
 ## Corpus
 
-10 documents PDF issus de la documentation officielle **dbt** (modèles SQL, Jinja/macros,
-data tests, modèles incrémentaux, matérialisations) et **Apache Airflow** (DAGs, opérateurs,
-scheduler, XComs, bonnes pratiques) — un seul domaine cohérent (outillage data engineering),
-comme recommandé pour une V1. Voir `corpus/*.pdf`.
-
-Le corpus est reproductible : `ingestion/build_corpus.py` télécharge les pages, en extrait le
-contenu principal (navigation, pieds de page et artefacts de mise en page retirés) et génère les
-PDF. Les PDF produits contiennent bien une couche de texte extractible (aucun scan), condition
-nécessaire à l'ingestion.
+10 pages de la documentation officielle : **dbt** (modèles SQL, Jinja et macros, data tests,
+modèles incrémentaux, matérialisations) et **Apache Airflow** (Dags, opérateurs, scheduler,
+XComs, bonnes pratiques). `ingestion/build_corpus.py` part des **sources** de ces pages (MDX du
+dépôt `dbt-labs/docs.getdbt.com`, reStructuredText du dépôt `apache/airflow` au tag `3.3.1`), à
+des versions figées dans le script : le corpus est reproductible au caractère près, ce que la CI
+vérifie à chaque push. Les fragments réutilisables, FAQ et exemples de code inclus par ces pages
+sont résolus ; les titres de sections sont conservés pour le chunking.
 
 ## Installation
 
 ```bash
 python -m venv venv
-venv\Scripts\activate          # Windows
+venv\Scripts\activate          # Windows (source venv/bin/activate sous Linux/macOS)
 pip install -r requirements.txt
+cp .env.example .env           # puis ajuster si besoin (voir la note sur les ports ci-dessous)
 
-cp .env.example .env           # puis ajuster si besoin (voir note ci-dessous sur le port Ollama)
-```
-
-Installer [Ollama](https://ollama.com) et récupérer le modèle :
-```bash
-ollama pull llama3.1:8b
+ollama pull llama3.1:8b        # générateur
+ollama pull qwen2.5:7b         # juge Ragas (distinct du générateur)
 ```
 
 > **Note Windows / Hyper-V** : sur une machine où Hyper-V ou WSL2 est actif, le port par défaut
 > d'Ollama (11434) peut être réservé par le système (`netsh interface ipv4 show
-> excludedportrange protocol=tcp`), provoquant une erreur `bind: An attempt was made to access a
-> socket in a way forbidden by its access permissions`. Dans ce cas, démarrer Ollama sur un autre
-> port : `OLLAMA_HOST=127.0.0.1:12500 ollama serve`, et renseigner `OLLAMA_BASE_URL` (et
-> `OLLAMA_BASE_URL_DOCKER` pour Docker) en conséquence dans `.env`. Le même problème peut
-> survenir avec le port 8000 de l'API — utiliser un autre port (`uvicorn api.main:app --port
-> 8600`, ou `HOST_PORT` dans `.env` pour Docker) le cas échéant. Vérifier les plages réservées
-> avec `netsh interface ipv4 show excludedportrange protocol=tcp`.
+> excludedportrange protocol=tcp`), provoquant l'erreur `bind: An attempt was made to access a
+> socket in a way forbidden by its access permissions`. Démarrer alors Ollama sur un autre port
+> (`OLLAMA_HOST=127.0.0.1:12500 ollama serve`) et renseigner `OLLAMA_BASE_URL` (et
+> `OLLAMA_BASE_URL_DOCKER` pour Docker) dans `.env`. Même problème possible avec le port 8000 de
+> l'API : utiliser `--port 8600`, ou `HOST_PORT` dans `.env` pour Docker.
 
 ## Utilisation
 
 ```bash
-# 0. (optionnel) Reconstruire le corpus depuis les docs en ligne — les PDF sont déjà versionnés
+# 0. (optionnel) Reconstruire le corpus depuis les sources — il est déjà versionné
 python ingestion/build_corpus.py
 
-# 1. Ingestion : PDF -> chunks
+# 1. Chunking par sections (télécharge le tokenizer d'embeddings)
 python ingestion/chunking.py
 
-# 2. Indexation dans ChromaDB + vérification manuelle du retrieval (sans LLM)
+# 2. Indexation ChromaDB + vérification manuelle du retrieval (sans LLM)
 python retrieval/vector_store.py
 
-# 3. Test de la chaîne RAG complète en ligne de commande
+# 3. Chaîne RAG complète en ligne de commande
 python rag_chain/chain.py
 
-# 4. Lancer l'API
+# 4. API (Swagger : http://127.0.0.1:8000/docs)
 uvicorn api.main:app --reload --port 8000
-# Swagger : http://127.0.0.1:8000/docs
 
-# 5. Boucle d'évaluation (Ragas + MLflow)
-python evaluation/run_ragas_eval.py --run-name "ma_config"
-mlflow ui --backend-store-uri sqlite:///mlruns.db   # puis ouvrir http://127.0.0.1:5000
+# 5. Évaluation
+python evaluation/run_eval.py --retrieval-only               # retrieval seul, quelques secondes
+python evaluation/run_eval.py --run-name baseline_v2         # complet (génération + Ragas)
+python evaluation/compare_runs.py baseline_v2 autre_run      # comparaison appariée
+mlflow ui --backend-store-uri sqlite:///mlruns.db            # http://127.0.0.1:5000
+```
+
+Exemple d'appel API :
+```bash
+curl -X POST http://127.0.0.1:8000/query -H "Content-Type: application/json" \
+  -d '{"question": "Comment pousser une valeur dans un XCom ?"}'
 ```
 
 ### Avec Docker
@@ -119,146 +123,152 @@ mlflow ui --backend-store-uri sqlite:///mlruns.db   # puis ouvrir http://127.0.0
 docker compose up -d --build
 curl http://127.0.0.1:8600/health
 ```
-L'API tourne dans le conteneur (port hôte 8600 par défaut, voir `HOST_PORT` dans `.env`),
-ChromaDB persiste dans `./chroma_db` (monté en volume), et le conteneur contacte Ollama sur la
-machine hôte via `OLLAMA_BASE_URL_DOCKER` (voir `.env.example`).
+L'image construit les chunks au build ; au premier démarrage, l'API indexe dans `./chroma_db`
+(volume) et réindexe si les chunks ou le modèle d'embeddings ont changé. Le conteneur contacte
+Ollama sur l'hôte via `OLLAMA_BASE_URL_DOCKER`. L'image publiée par la CD est disponible sur
+`ghcr.io/rayanghomsi10/assistant-rag`.
 
-Exemple d'appel API :
-```bash
-curl -X POST http://127.0.0.1:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Comment pousser une valeur dans un XCom ?"}'
-```
+## Protocole d'évaluation
 
-## Résultats d'évaluation
+Jeu : `evaluation/eval_dataset.json`, **85 questions** — 73 dans le périmètre (les 10 documents
+sont couverts) et 12 hors périmètre, dont des pièges proches du domaine (Prefect, Dagster,
+Snowflake, Kafka Connect…). Chaque question du périmètre porte des **preuves recopiées mot pour
+mot du corpus** ; `evaluation/dataset.py` vérifie qu'elles s'y trouvent (en CI à chaque push).
+Ce jeu est tenu à l'écart de l'entraînement DPO.
 
-Configuration de référence : chunking 500 tokens / overlap 50, `all-MiniLM-L6-v2`, `llama3.1:8b`
-(Q4_K_M), top-k = 4, jeu de test de 15 questions de référence (`evaluation/test_dataset.json`).
-
-| Métrique | Score moyen | Ce qu'elle mesure |
+| Famille | Métriques | Juge |
 |---|---|---|
-| Faithfulness | **0.818** | La réponse est-elle factuellement cohérente avec les chunks récupérés (pas d'hallucination) ? |
-| Answer relevancy | **0.581** | La réponse répond-elle réellement à la question posée ? |
-| Context precision | **0.987** | Les chunks les plus pertinents sont-ils bien classés en tête du retrieval ? |
+| Retrieval | `evidence_recall`, `evidence_hit`, `source_hit`, `mrr` | Aucun : présence des preuves dans les chunks récupérés |
+| Génération, vérifiable | `false_refusal`, `correct_refusal`, `citations_valid`, `cites_expected_source`, `quotes_faithful`, `code_support` | Aucun : règles déterministes (`rag_chain/checks.py`) |
+| Génération, sémantique | `faithfulness`, `answer_relevancy`, `context_precision` (Ragas) | `qwen2.5:7b`, distinct du générateur ; périmètre uniquement |
 
-*(run `baseline_chunk500_overlap50_v2_fixed_dataset`, 15/15 questions évaluées sans erreur — voir
-`evaluation/results/baseline_chunk500_overlap50_v2_fixed_dataset.csv` pour le détail par question.)*
+Chaque moyenne est donnée avec un **intervalle de confiance bootstrap à 95 %** sur les questions.
+`compare_runs.py` compare deux runs par **bootstrap apparié** (différences question par
+question) et indique si l'écart est significatif. `--repeats N` relance génération et juge pour
+mesurer la variance entre exécutions. `--retrieval-only` donne aussi la distribution des scores
+du meilleur chunk dans et hors périmètre, pour calibrer un éventuel seuil de refus avant LLM
+(`RELEVANCE_THRESHOLD`, désactivé par défaut).
 
-**Lecture des résultats** : le retrieval est excellent (context precision quasi parfaite — les
-bons chunks remontent bien en tête), ce qui valide le choix de chunking et d'embeddings. La
-faithfulness est bonne (0.82) : les réponses inspectées manuellement dans le CSV de résultats
-sont bien ancrées dans le contexte récupéré, y compris sur des réponses
-factuellement correctes et vérifiées (ex. `xcom_push`, fréquence du scheduler). L'answer
-relevancy est en revanche systématiquement plus basse (0.58 en moyenne, parfois 0.22-0.37 sur des
-réponses par ailleurs correctes et fidèles à 100%) — en creusant, ce n'est pas la qualité des
-réponses qui est en cause mais la métrique elle-même : Ragas calcule l'answer relevancy en
-générant des questions hypothétiques à partir de la réponse via le LLM juge, puis compare leur
-similarité à la question d'origine. Avec un juge local de 8B de paramètres (le même modèle que le
-générateur, faute d'API payante), ces questions générées dérivent souvent de la formulation
-d'origine — c'est un biais connu de la métrique quand le juge est un petit modèle local, pas un
-défaut du pipeline RAG lui-même. Un vrai cas de refus correct existe aussi dans le jeu de test
-(question hors périmètre, corpus financier) : le système répond honnêtement "je ne trouve pas
-cette information", ce qui est le comportement voulu, mais fait mécaniquement chuter les deux
-métriques à 0 sur cette ligne faute de contenu à évaluer.
+## Résultats
 
-Résultats détaillés par question : `evaluation/results/<nom_du_run>.csv` (un fichier par
-expérience). Historique des runs et comparaison : `mlflow ui --backend-store-uri sqlite:///mlruns.db`.
+Les résultats de la V2 (corpus, index, jeu d'évaluation et juge nouveaux) sont à produire avec
+`python evaluation/run_eval.py --run-name baseline_v2` ; ils ne sont pas comparables à ceux de la
+V1, archivés dans `evaluation/results/v1/` (voir « Historique »).
 
-### Itération : effet de la taille de chunk
+| Run | evidence_hit | false_refusal | quotes_faithful | faithfulness | answer_relevancy | correct_refusal |
+|---|---|---|---|---|---|---|
+| `baseline_v2` | à mesurer | | | | | |
+| `dpo_v1` | à mesurer | | | | | |
 
-Deuxième configuration testée pour mesurer l'impact du chunking, à corpus, prompt, modèle et jeu
-de test identiques — seuls la taille de chunk et le chevauchement changent :
+## Alignement du générateur par DPO
 
-| Config | Chunks indexés | Faithfulness | Answer relevancy | Context precision |
-|---|---|---|---|---|
-| **500 tokens / overlap 50** (retenue) | 126 | **0.818** | 0.581 | **0.987** |
-| 300 tokens / overlap 30 | 221 | 0.748 | **0.629** | 0.963 |
+**Objectif** : corriger les défauts mesurés du générateur — citations reformulées présentées
+comme textuelles, sources citées hors contexte, refus à tort, réponses non ancrées — sans
+l'entraîner contre un juge LLM bruité.
 
-**Conclusion** : des chunks plus petits améliorent légèrement l'answer relevancy (+0.05 — des
-passages plus courts et plus ciblés donnent des réponses plus directes), mais dégradent la
-faithfulness (−0.07) et la context precision (−0.02). L'explication la plus probable : en
-découpant à 300 tokens, un passage explicatif est plus souvent coupé en deux, le modèle reçoit
-des fragments incomplets et comble les trous — exactement ce que la faithfulness pénalise. La
-configuration **500/50 est donc retenue** comme référence, la fidélité au contexte primant sur
-la formulation dans un système RAG dont l'intérêt est précisément l'ancrage dans les sources.
+**Pipeline** (`training/`, détails dans `training/README.md`) :
+
+1. `generate_questions.py` — questions d'entraînement générées à partir de chaque chunk (le
+   chunk source est conservé), questions hors périmètre rédigées à la main, **filtre anti-fuite**
+   contre le jeu d'évaluation (recouvrement lexical et similarité d'embeddings).
+2. `build_preferences.py` — pour chaque question, le pipeline réel récupère le contexte et le
+   modèle déployé génère plusieurs réponses (données *on-policy*) ; la **récompense vérifiable**
+   (`reward.py`) les note ; la meilleure réponse valide et la moins bonne forment une paire.
+   Contraintes dures : pas de refus quand le passage source est dans le contexte, refus hors
+   périmètre, pas de document cité hors contexte, pas de citation inventée. Composantes :
+   implication des phrases par le contexte (NLI multilingue), source citée, identifiants de code
+   présents dans le contexte, concision.
+3. `train_dpo.py` / `dpo_colab.ipynb` — DPO avec TRL et QLoRA sur Llama 3.1 8B Instruct (le
+   même modèle que `llama3.1:8b`), avec le gabarit de chat d'Ollama et le prompt exact de
+   l'inférence ; GPU 16 Go (Colab ou Kaggle).
+4. `export_ollama.py` — adaptateur appliqué à `llama3.1:8b` (Modelfile `ADAPTER`), ou modèle
+   fusionné puis quantifié ; évaluation avec `run_eval.py --model rag-assistant-dpo` et
+   comparaison appariée avec `baseline_v2`.
+
+**Règle de décision** : le modèle DPO n'est adopté que si `compare_runs.py` montre une
+amélioration significative sur au moins une métrique visée (`quotes_faithful`, `faithfulness`,
+`false_refusal`, `citations_valid`) **et** aucune dégradation significative de
+`answer_relevancy` ni de `correct_refusal`.
+
+## CI/CD
+
+`.github/workflows/ci-cd.yml` : à chaque push et pull request, lint (ruff), tests unitaires sans
+modèle ni GPU, validation du jeu d'évaluation contre le corpus, reconstruction du corpus depuis
+les sources figées (aucun écart toléré), build de l'image Docker. Sur `main` et sur les tags
+`v*`, l'image est publiée sur GitHub Container Registry puis démarrée pour vérifier que l'API
+construit son index et répond sur `/health`. `.github/workflows/training-smoke.yml` exécute un
+entraînement DPO minuscule sur CPU quand le code d'entraînement change.
 
 ## Limites connues
 
-- **Chunking simple** : découpage par taille fixe (500 tokens / overlap 50), pas de chunking
-  sémantique ou structurel. C'est un choix volontaire de V1. La context precision étant déjà à
-  0.987, le gain restant n'est pas côté retrieval mais côté génération : un chunking respectant
-  les frontières de sections (plutôt qu'une coupe à taille fixe au milieu d'une explication)
-  viserait surtout à faire monter la faithfulness — c'est ce que suggère l'itération 300/30
-  ci-dessus, où des coupes plus fréquentes l'ont dégradée.
-- **Corpus restreint** : 10 documents, un seul domaine (dbt/Airflow). Le système répond "je ne
-  trouve pas cette information" en dehors de ce périmètre par construction du prompt.
-- **Citations reformulées** : sur certaines réponses, le modèle présente entre guillemets un
-  passage qui n'est pas verbatim dans le contexte — le fond reste correct et ancré, mais la
-  citation est reformulée. C'est une des causes concrètes d'une faithfulness à 0.82 plutôt que
-  plus haute. Piste d'amélioration : interdire explicitement les guillemets dans le prompt
-  système, ou n'autoriser que des citations vérifiées par correspondance exacte avec le contexte.
-- **LLM juge = LLM générateur** : Ragas utilise le même modèle (`llama3.1:8b` via Ollama) comme
-  juge que comme générateur, faute d'API payante. Un juge plus puissant (ou un juge différent du
-  générateur) donnerait des scores plus fiables et moins sujets à un biais d'auto-évaluation —
-  on observe concrètement ce biais sur `answer_relevancy` (voir section Résultats).
-- **Construction du jeu de test** : une première version d'une question de référence
-  (idempotence des tâches Airflow) avait été écrite à partir de connaissances générales sur
-  Airflow plutôt que vérifiée contre le corpus réellement récupéré, qui ne couvre pas ce sujet en
-  détail. Le système a correctement répondu "je ne trouve pas cette information" (comportement
-  honnête, sans hallucination) plutôt que d'inventer une réponse plausible — mais cela a révélé
-  une question de référence mal ancrée, corrigée depuis. Ça illustre un piège réel : le jeu de
-  questions/réponses de référence doit être vérifié phrase par phrase contre le corpus effectif,
-  pas rédigé de mémoire.
-- **Concurrence Ragas vs Ollama local** : Ragas lance ses appels au LLM juge en parallèle
-  (`max_workers` par défaut = 16), mais un serveur Ollama local sert les requêtes en série
-  (`OLLAMA_NUM_PARALLEL=1`) — la configuration par défaut provoque des `TimeoutError` sur une
-  partie des questions. Corrigé en réduisant la concurrence et en augmentant le timeout
-  (`RunConfig(max_workers=2, timeout=300)` dans `run_ragas_eval.py`).
-- **Latence** : mesurée entre ~2s et ~12s par requête selon la longueur de la réponse, une fois
-  le modèle chargé en VRAM (comptez ~40-70s au tout premier appel, le temps du chargement) sur un
-  GPU 8 Go. Sans GPU, la latence serait nettement plus élevée.
-- **Compatibilité ragas 0.4.3 / langchain-community** : `ragas` importe de façon inconditionnelle
-  un module VertexAI que `langchain-community` (en cours de dépréciation) a retiré. Contournement
-  documenté et appliqué dans `evaluation/_ragas_compat.py` (aucun impact fonctionnel, le projet
-  n'utilise jamais VertexAI).
-- **ChromaDB plutôt que Qdrant** : choix fait pour rester à zéro dépendance Docker côté base
-  vectorielle. `docker-compose.yml` conteneurise l'API ; ChromaDB persiste en fichiers locaux
-  montés en volume.
-- **`docker run -v` sous Git Bash (Windows)** : passer des volumes en ligne de commande
-  (`docker run -v $(pwd)/...`) sous Git Bash déclenche une conversion de chemin MSYS qui corrompt
-  le chemin de destination dans le conteneur. `docker compose up` (les chemins viennent du YAML,
-  pas de la ligne de commande) n'a pas ce problème — c'est la méthode recommandée sur cette
-  configuration.
+- **Juge LLM local** : Ragas reste jugé par un modèle de 7B. Il est désormais distinct du
+  générateur (moins de biais d'auto-évaluation), mais ses scores restent bruités : d'où les
+  métriques déterministes en parallèle et les intervalles de confiance.
+- **La récompense DPO ne mesure pas la pertinence de la réponse** : seulement son ancrage et le
+  respect des règles. Risque : apprendre des réponses fidèles mais évasives. Garde-fous :
+  longueur minimale, `answer_relevancy` dans la règle de décision, inspection manuelle d'un
+  échantillon de paires.
+- **Questions d'entraînement synthétiques** : générées par LLM, donc moins variées que de vraies
+  questions d'utilisateurs.
+- **Adaptateur QLoRA sur une base Q4_K_M** : l'adaptateur est entraîné sur une base quantifiée en
+  NF4 et appliqué par Ollama sur une base quantifiée autrement ; Ollama signale que le résultat
+  peut s'écarter. L'évaluation tranche ; sinon, voie « fusion » de `export_ollama.py`.
+- **Corpus restreint** : 10 documents, un seul domaine. Hors périmètre, le système refuse par
+  construction du prompt.
+- **Taille du jeu d'évaluation** : 85 questions donnent des intervalles de confiance de l'ordre
+  de ±0,05 à ±0,10 sur des métriques binaires ; de petits écarts resteront non significatifs.
+- **Concurrence Ragas vs Ollama local** : Ragas parallélise par défaut (16 workers) alors qu'un
+  Ollama local sert en série ; `RunConfig(max_workers=2, timeout=300)` évite les `TimeoutError`.
+- **Compatibilité ragas 0.4.3 / langchain-community** : contournement d'un import VertexAI
+  retiré, dans `evaluation/_ragas_compat.py` (sans impact fonctionnel).
+- **`docker run -v` sous Git Bash (Windows)** : la conversion de chemins MSYS corrompt les
+  volumes passés en ligne de commande ; utiliser `docker compose up`.
+
+## Historique : ce que la V1 a appris
+
+La V1 (corpus PDF tiré du HTML des sites, `all-MiniLM-L6-v2`, chunks fixes de 500 tokens,
+15 questions, juge = générateur) affichait faithfulness 0,818, answer relevancy 0,581 et
+context precision 0,987. Son analyse a motivé la V2 :
+
+- le modèle d'embeddings n'était pas multilingue alors que les questions sont en français et le
+  corpus en anglais — suspect au moins aussi probable que le juge pour l'answer relevancy basse ;
+- une context precision de 0,987 sur 10 documents avec des questions qui nomment l'outil ne
+  prouvait pas grand-chose (la question hors périmètre y obtenait même 1,0) ;
+- la comparaison 500/50 contre 300/30 tokens reposait sur une exécution de 15 questions, où des
+  questions basculaient de 1,0 à 0,0 : l'écart de −0,07 n'était pas distinguable du bruit ;
+- la question de refus valait 0 par construction et tirait les moyennes vers le bas ;
+- le texte extrait des PDF contenait des artefacts de navigation et des phrases coupées ;
+- MLflow étiquetait les runs avec la configuration du `.env` au moment de l'évaluation, pas
+  celle qui avait produit l'index.
 
 ## Structure du dépôt
 
 ```
-rag-genai-eval/
-├── README.md
-├── config.py                   # configuration centrale (surchargeable par variables d'env)
-├── .env.example                # modèle de configuration locale
-├── corpus/                     # 10 PDF (documentation dbt + Airflow)
+assistant-rag/
+├── config.py                    # configuration centrale (surchargeable par variables d'env)
+├── corpus/                      # 10 documents Markdown, reconstruits depuis les sources
 ├── ingestion/
-│   ├── chunking.py             # PDF -> chunks (taille fixe + overlap)
-│   ├── embeddings.py           # sentence-transformers (local)
-│   └── chunks.json             # artefact d'ingestion (généré par chunking.py)
-├── retrieval/
-│   └── vector_store.py         # ChromaDB : indexation + recherche par similarité
+│   ├── build_corpus.py          # MDX / reStructuredText -> Markdown (versions figées)
+│   ├── chunking.py              # chunking par sections
+│   └── embeddings.py            # embeddings multilingues + reranker
+├── retrieval/vector_store.py    # ChromaDB + reranking + métadonnées d'index
 ├── rag_chain/
-│   └── chain.py                # LangChain LCEL : retriever -> prompt -> LLM
-├── api/
-│   └── main.py                 # FastAPI (POST /query, GET /health)
+│   ├── chain.py                 # prompt unique, génération
+│   └── checks.py                # vérifications déterministes (éval et récompense)
+├── api/main.py                  # FastAPI
 ├── evaluation/
-│   ├── test_dataset.json       # 15 questions/réponses de référence
-│   ├── run_ragas_eval.py       # boucle d'évaluation Ragas
-│   ├── mlflow_tracking.py      # log des runs dans MLflow
-│   ├── _ragas_compat.py        # correctif d'import ragas/langchain-community
-│   └── results/                # résultats détaillés, un CSV par run
-├── Dockerfile
-├── .dockerignore
-├── docker-compose.yml
-└── requirements.txt
+│   ├── eval_dataset.json        # 85 questions avec preuves
+│   ├── dataset.py               # validation contre le corpus
+│   ├── metrics.py               # métriques déterministes, bootstrap
+│   ├── run_eval.py              # boucle d'évaluation + MLflow
+│   ├── compare_runs.py          # comparaison appariée
+│   └── results/                 # un dossier par run (v1/ : archives)
+├── training/                    # pipeline DPO (voir training/README.md)
+├── tests/                       # tests unitaires (sans modèle ni GPU) + smoke test DPO
+├── .github/workflows/           # CI/CD
+├── Dockerfile, docker-compose.yml
+└── requirements.txt, requirements-dev.txt, requirements-train.txt
 ```
 
-Non versionnés (voir `.gitignore`) : `venv/`, `chroma_db/` (index vectoriel, reconstructible via
-`retrieval/vector_store.py`), `mlruns.db` (historique MLflow local), `.env`, `corpus/raw_text/`.
+Non versionnés : `venv/`, `chroma_db/`, `ingestion/chunks.json`, `mlruns.db`, `.env`,
+`training/data/`, `training/outputs/`.
