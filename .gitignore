@@ -7,5 +7,10 @@ mlruns/
 mlruns.db
 mlartifacts/
 corpus/raw_text/
+# Artefact dérivé du corpus (python ingestion/chunking.py)
+ingestion/chunks.json
+# Données d'entraînement générées et adaptateurs entraînés
+training/data/
+training/outputs/
 *.log
 .pytest_cache/
