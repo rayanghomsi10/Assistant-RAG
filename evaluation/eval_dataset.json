@@ -1,0 +1,1005 @@
+{
+  "version": 2,
+  "description": "Jeu d'évaluation tenu à l'écart de l'entraînement. Chaque question du périmètre a des preuves (evidence) recopiées mot pour mot du corpus, vérifiées automatiquement par evaluation/dataset.py.",
+  "items": [
+    {
+      "id": "dbt_models_01",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un modèle SQL dans dbt ?",
+      "ground_truth": "Un modèle SQL dbt est une instruction select, définie dans un fichier .sql (généralement dans le dossier models). Chaque fichier .sql contient un seul modèle, et le nom du modèle est hérité du nom du fichier.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "A SQL model is a select statement.",
+        "Each .sql file contains one model / select statement",
+        "The model name is inherited from the filename"
+      ]
+    },
+    {
+      "id": "dbt_models_02",
+      "type": "in_scope",
+      "question": "Lors d'un dbt run, comment dbt construit-il un modèle dans l'entrepôt de données ?",
+      "ground_truth": "dbt enveloppe la requête select du modèle dans une instruction create view as ou create table as.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "by wrapping it in a create view as or create table as statement"
+      ]
+    },
+    {
+      "id": "dbt_models_03",
+      "type": "in_scope",
+      "question": "Faut-il créer le schéma cible avant d'exécuter dbt ?",
+      "ground_truth": "Non : dbt vérifie à l'exécution si le schéma existe et le crée s'il n'existe pas.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "dbt will check if the schema exists when it runs. If the schema does not exist, dbt will create it for you."
+      ]
+    },
+    {
+      "id": "dbt_models_04",
+      "type": "in_scope",
+      "question": "Que fait dbt quand on supprime un modèle du projet ?",
+      "ground_truth": "dbt ne supprime pas automatiquement la relation correspondante dans le schéma : il faut la supprimer manuellement.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "If you delete a model from your dbt project, dbt does not automatically drop the relation from your schema.",
+        "you should manually drop the related relations from your schema"
+      ]
+    },
+    {
+      "id": "dbt_models_05",
+      "type": "in_scope",
+      "question": "À quoi sert la fonction ref dans dbt ?",
+      "ground_truth": "ref s'utilise à la place des noms de tables pour créer des dépendances entre modèles. dbt s'en sert pour déterminer l'ordre d'exécution des modèles (en construisant un DAG) et pour gérer des environnements séparés, en remplaçant le modèle référencé par le nom de la table ou de la vue correspondante.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "You can build dependencies between models by using the ref function in place of table names in a query.",
+        "Determine the order to run the models by creating a dependent acyclic graph (DAG)."
+      ]
+    },
+    {
+      "id": "dbt_models_06",
+      "type": "in_scope",
+      "question": "Les noms de ressources utilisés avec ref doivent-ils être uniques dans un projet dbt ?",
+      "ground_truth": "Oui, au sein d'un même projet, même s'ils sont dans des dossiers différents. Une ressource d'un autre projet installé comme dépendance peut porter le même nom : dbt utilise le nom du projet pour les distinguer (namespacing).",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "these resource names need to be unique, even if they are in distinct folders"
+      ]
+    },
+    {
+      "id": "dbt_models_07",
+      "type": "in_scope",
+      "question": "Comment préciser le type d'une colonne dans un modèle dbt ?",
+      "ground_truth": "En castant la colonne vers le bon type directement dans la requête du modèle.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "Simply cast the column to the correct type in your model"
+      ]
+    },
+    {
+      "id": "dbt_models_08",
+      "type": "in_scope",
+      "question": "Pourquoi n'y a-t-il pas d'interruption de service quand dbt reconstruit des modèles ?",
+      "ground_truth": "Le SQL généré par dbt remplace les relations de façon atomique, donc les utilisateurs métier ne subissent pas d'interruption.",
+      "expected_sources": [
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "ensures that any relations are replaced atomically"
+      ]
+    },
+    {
+      "id": "dbt_jinja_01",
+      "type": "in_scope",
+      "question": "À quoi sert Jinja dans un projet dbt ?",
+      "ground_truth": "Jinja est un langage de templating combiné au SQL. Il transforme le projet dbt en environnement de programmation pour le SQL : structures de contrôle (if, for), variables d'environnement, adaptation selon la cible, macros réutilisables. Jinja n'est pas lui-même un langage de programmation.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "Using Jinja turns your dbt project into a programming environment for SQL",
+        "Jinja itself isn't a programming language"
+      ]
+    },
+    {
+      "id": "dbt_jinja_02",
+      "type": "in_scope",
+      "question": "Quels sont les trois types de délimiteurs Jinja et à quoi servent-ils ?",
+      "ground_truth": "Les expressions {{ ... }} produisent une chaîne (variables, appels de macros) ; les statements {% ... %} ne produisent pas de chaîne et servent au contrôle de flux (for, if), à définir ou modifier des variables et à définir des macros ; les commentaires {# ... #} empêchent l'exécution du texte qu'ils contiennent.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "Expressions are used when you want to output a string.",
+        "Statements don't output a string."
+      ]
+    },
+    {
+      "id": "dbt_jinja_03",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'une macro dans dbt et où est-elle définie ?",
+      "ground_truth": "Un morceau de code Jinja réutilisable, analogue à une fonction dans d'autres langages. Les macros sont définies dans des fichiers .sql, généralement dans le dossier macros.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "Macros in Jinja are pieces of code that can be reused multiple times",
+        "Macros are defined in .sql files, typically in your macros directory"
+      ]
+    },
+    {
+      "id": "dbt_jinja_04",
+      "type": "in_scope",
+      "question": "Pourquoi faut-il mettre des guillemets autour d'un nom de colonne passé en argument à une macro dbt ?",
+      "ground_truth": "Pour passer une chaîne de caractères : sans guillemets, le parseur Jinja cherche une variable portant ce nom ; comme elle n'existe pas, l'expression compile en rien.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "Without the quotes, the Jinja parser will look for a variable named amount."
+      ]
+    },
+    {
+      "id": "dbt_jinja_05",
+      "type": "in_scope",
+      "question": "Comment supprimer les espaces et lignes vides superflus dans le SQL compilé à partir de Jinja ?",
+      "ground_truth": "Avec le contrôle des espaces (whitespace control) de Jinja : un signe moins au début ou à la fin d'un bloc, par exemple {{- ... -}} ou {%- ... %}.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "at the start or end of a block to strip whitespace before or after the block"
+      ]
+    },
+    {
+      "id": "dbt_jinja_06",
+      "type": "in_scope",
+      "question": "Comment utiliser une macro provenant d'un package comme dbt-utils ?",
+      "ground_truth": "Après avoir installé le package, on appelle ses macros en les préfixant du nom du package.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "make sure you qualify the macro by prefixing it with the package name"
+      ]
+    },
+    {
+      "id": "dbt_jinja_07",
+      "type": "in_scope",
+      "question": "Entre lisibilité et factorisation (DRY), que recommande dbt quand on utilise Jinja ?",
+      "ground_truth": "Privilégier la lisibilité, même si cela implique de répéter quelques lignes de SQL : tout abstraire en macros rend les modèles plus difficiles à comprendre.",
+      "expected_sources": [
+        "dbt_02_jinja_macros.md"
+      ],
+      "evidence": [
+        "we recommend favoring readability when mixing Jinja with SQL, even if it means repeating some lines of SQL in a few places"
+      ]
+    },
+    {
+      "id": "dbt_tests_01",
+      "type": "in_scope",
+      "question": "Quels tests de données génériques dbt fournit-il par défaut ?",
+      "ground_truth": "Quatre : unique, not_null, accepted_values et relationships.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "dbt ships with four generic data tests already defined: unique, not_null, accepted_values, and relationships"
+      ]
+    },
+    {
+      "id": "dbt_tests_02",
+      "type": "in_scope",
+      "question": "Comment dbt appelle-t-il désormais ce qui s'appelait auparavant 'tests' ?",
+      "ground_truth": "Des data tests (tests de données), pour les distinguer des unit tests. La clé YAML tests: reste acceptée comme alias de data_tests:.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "Tests are now called data tests to disambiguate from unit tests.",
+        "The YAML key tests: is still supported as an alias for data_tests:."
+      ]
+    },
+    {
+      "id": "dbt_tests_03",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un test de données singulier (singular data test) dans dbt ?",
+      "ground_truth": "Une requête SQL qui renvoie les lignes en échec, enregistrée dans un fichier .sql (en général dans le dossier tests) ; chaque fichier contient un select et définit un test, dont le nom est celui du fichier.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "The simplest way to define a data test is by writing the exact SQL that will return failing records.",
+        "Each .sql file contains one select statement, and it defines one data test"
+      ]
+    },
+    {
+      "id": "dbt_tests_04",
+      "type": "in_scope",
+      "question": "Quand un test de données dbt est-il considéré comme réussi ?",
+      "ground_truth": "Quand sa requête renvoie zéro ligne en échec.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "If the data test returns zero failing rows, it passes"
+      ]
+    },
+    {
+      "id": "dbt_tests_05",
+      "type": "in_scope",
+      "question": "Que se passe-t-il quand on active l'option --store-failures pour les tests dbt ?",
+      "ground_truth": "dbt enregistre d'abord les résultats de la requête de test dans une table de la base, puis interroge cette table pour compter les échecs. Les tables sont créées par défaut dans un schéma suffixé ou nommé dbt_test__audit, et les résultats remplacent toujours les échecs précédents du même test.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "dbt will first save the results of a test query to a table in the database",
+        "Test result tables are created in a schema suffixed or named dbt_test__audit, by default."
+      ]
+    },
+    {
+      "id": "dbt_tests_06",
+      "type": "in_scope",
+      "question": "Quels tests dbt recommande-t-il d'ajouter à chaque modèle ?",
+      "ground_truth": "Un test sur la clé primaire : une colonne à la fois unique et not_null.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "We recommend that every model has a data test on a primary key, that is, a column that is unique and not_null."
+      ]
+    },
+    {
+      "id": "dbt_tests_07",
+      "type": "in_scope",
+      "question": "Comment exécuter les tests d'un seul modèle dbt ?",
+      "ground_truth": "Avec le flag --select (ou -s) suivi du nom du modèle.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "use the --select flag (or -s flag), followed by the name of the model"
+      ]
+    },
+    {
+      "id": "dbt_tests_08",
+      "type": "in_scope",
+      "question": "Peut-on définir à la fois une clé tests et une clé data_tests sur le même modèle dbt ?",
+      "ground_truth": "Non, une même ressource ne peut pas avoir les deux clés en même temps.",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "you can't have a tests and a data_tests key associated with the same resource"
+      ]
+    },
+    {
+      "id": "dbt_tests_09",
+      "type": "in_scope",
+      "question": "Sous quelle propriété faut-il placer les entrées d'un test dbt comme accepted_values ou relationships ?",
+      "ground_truth": "Sous arguments: (disponible à partir de la v1.10.5 et obligatoire en v2).",
+      "expected_sources": [
+        "dbt_03_tests.md"
+      ],
+      "evidence": [
+        "Nest those inputs under arguments:",
+        "In v2, nesting test inputs under arguments is required."
+      ]
+    },
+    {
+      "id": "dbt_incr_01",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un modèle incrémental en dbt ?",
+      "ground_truth": "Un modèle construit comme une table : au premier run, toutes les lignes source sont transformées ; aux runs suivants, dbt ne transforme que les lignes qu'on lui demande de filtrer (par exemple créées ou modifiées depuis le dernier run) et les insère dans la table cible, ce qui réduit le temps d'exécution et les coûts.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "Incremental models are built as tables in your data warehouse.",
+        "On subsequent runs, dbt transforms only the rows in your source data that you tell dbt to filter for"
+      ]
+    },
+    {
+      "id": "dbt_incr_02",
+      "type": "in_scope",
+      "question": "Dans quelles conditions la macro is_incremental() renvoie-t-elle True ?",
+      "ground_truth": "Quand le modèle existe déjà comme table dans la base, que le flag full-refresh n'est pas passé et que le modèle est configuré avec materialized='incremental'.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "The model must already exist as a table in the database",
+        "The full-refresh flag is not passed"
+      ]
+    },
+    {
+      "id": "dbt_incr_03",
+      "type": "in_scope",
+      "question": "À quoi sert le paramètre unique_key d'un modèle incrémental dbt ?",
+      "ground_truth": "Il permet de mettre à jour les lignes existantes au lieu de seulement ajouter de nouvelles lignes. Sans unique_key, la plupart des adaptateurs se comportent en ajout seul (append).",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "Defining the optional unique_key parameter enables updating existing rows instead of just appending new rows.",
+        "most adapters will result in append-only behavior"
+      ]
+    },
+    {
+      "id": "dbt_incr_04",
+      "type": "in_scope",
+      "question": "Comment forcer dbt à reconstruire entièrement un modèle incrémental ?",
+      "ground_truth": "Avec le flag --full-refresh, qui supprime la table cible existante avant de la reconstruire entièrement.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "use the --full-refresh flag on the command line"
+      ]
+    },
+    {
+      "id": "dbt_incr_05",
+      "type": "in_scope",
+      "question": "Quelles sont les valeurs possibles de on_schema_change pour un modèle incrémental ?",
+      "ground_truth": "ignore (par défaut), fail, append_new_columns et sync_all_columns.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "The possible values for on_schema_change are:",
+        "Triggers an error message when the source and target schemas diverge",
+        "Append new columns to the existing table."
+      ]
+    },
+    {
+      "id": "dbt_incr_06",
+      "type": "in_scope",
+      "question": "Avec le comportement par défaut de on_schema_change, que se passe-t-il quand on ajoute une colonne à un modèle incrémental ?",
+      "ground_truth": "Avec ignore (le défaut), la nouvelle colonne n'apparaît pas dans la table cible après un dbt run ; si on retire une colonne, le dbt run échoue.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "this column will not appear in your target table"
+      ]
+    },
+    {
+      "id": "dbt_incr_07",
+      "type": "in_scope",
+      "question": "Pourquoi les colonnes utilisées dans unique_key ne doivent-elles pas contenir de valeurs nulles ?",
+      "ground_truth": "Sinon le modèle incrémental peut échouer à faire correspondre les lignes et générer des doublons.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "Columns used in this way should not contain any nulls, or the incremental model may fail to match rows and generate duplicate rows."
+      ]
+    },
+    {
+      "id": "dbt_incr_08",
+      "type": "in_scope",
+      "question": "La stratégie incrémentale insert_overwrite utilise-t-elle unique_key ?",
+      "ground_truth": "Non, car elle opère sur des partitions de données plutôt que sur des lignes individuelles.",
+      "expected_sources": [
+        "dbt_04_incremental_models.md"
+      ],
+      "evidence": [
+        "the insert_overwrite strategy does not use unique_key, because it operates on partitions of data rather than individual rows"
+      ]
+    },
+    {
+      "id": "dbt_mat_01",
+      "type": "in_scope",
+      "question": "Quels sont les cinq types de matérialisations intégrés à dbt ?",
+      "ground_truth": "table, view, incremental, ephemeral et materialized view. On peut aussi créer des matérialisations personnalisées.",
+      "expected_sources": [
+        "dbt_05_materializations.md",
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "five types of materializations built into dbt"
+      ]
+    },
+    {
+      "id": "dbt_mat_02",
+      "type": "in_scope",
+      "question": "Quelle est la matérialisation par défaut d'un modèle dbt ?",
+      "ground_truth": "La vue (view).",
+      "expected_sources": [
+        "dbt_05_materializations.md",
+        "dbt_01_sql_models.md"
+      ],
+      "evidence": [
+        "By default, dbt models are materialized as \"views\"."
+      ]
+    },
+    {
+      "id": "dbt_mat_03",
+      "type": "in_scope",
+      "question": "Quels sont les avantages et les inconvénients de la matérialisation view dans dbt ?",
+      "ground_truth": "Avantages : aucune donnée supplémentaire n'est stockée et les vues ont toujours les derniers enregistrements. Inconvénients : les vues qui font des transformations importantes, ou empilées sur d'autres vues, sont lentes à interroger.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "No additional data is stored, views on top of source data will always have the latest records in them.",
+        "Views that perform a significant transformation, or are stacked on top of other views, are slow to query."
+      ]
+    },
+    {
+      "id": "dbt_mat_04",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un modèle ephemeral dans dbt ?",
+      "ground_truth": "Un modèle qui n'est pas construit dans la base : dbt interpole son code dans les modèles qui en dépendent via une CTE (préfixée __dbt__cte__). On ne peut pas faire de select directement dessus.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "ephemeral models are not directly built into the database.",
+        "You cannot select directly from this model."
+      ]
+    },
+    {
+      "id": "dbt_mat_05",
+      "type": "in_scope",
+      "question": "Dans quels cas dbt recommande-t-il la matérialisation table ?",
+      "ground_truth": "Pour les modèles interrogés par des outils de BI, et pour les transformations lentes utilisées par de nombreux modèles en aval.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "Use the table materialization for any models being queried by BI tools"
+      ]
+    },
+    {
+      "id": "dbt_mat_06",
+      "type": "in_scope",
+      "question": "Quelles matérialisations les modèles Python de dbt supportent-ils ?",
+      "ground_truth": "table et incremental ; ils ne peuvent pas être matérialisés en view ni en ephemeral.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "Python models support two materializations:",
+        "Python models can't be materialized as view or ephemeral."
+      ]
+    },
+    {
+      "id": "dbt_mat_07",
+      "type": "in_scope",
+      "question": "dbt-snowflake supporte-t-il les materialized views ?",
+      "ground_truth": "Non : dbt-snowflake utilise des Dynamic Tables à la place.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "dbt-snowflake does not support materialized views, it uses Dynamic Tables instead."
+      ]
+    },
+    {
+      "id": "dbt_mat_08",
+      "type": "in_scope",
+      "question": "Pour quel type de données dbt recommande-t-il les modèles incrémentaux, et faut-il commencer par eux ?",
+      "ground_truth": "Ils conviennent surtout aux données de type événements, à utiliser quand les dbt run deviennent trop lents ; il ne faut pas commencer par des modèles incrémentaux.",
+      "expected_sources": [
+        "dbt_05_materializations.md"
+      ],
+      "evidence": [
+        "Incremental models are best for event-style data"
+      ]
+    },
+    {
+      "id": "af_xcom_01",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un XCom dans Airflow et à quoi sert-il ?",
+      "ground_truth": "XCom (cross-communications) est un mécanisme qui permet aux tâches de communiquer entre elles, car par défaut elles sont isolées et peuvent tourner sur des machines différentes. Un XCom est identifié par une key, un task_id et un dag_id, et n'est conçu que pour de petites quantités de données.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "XComs (short for \"cross-communications\") are a mechanism that let tasks talk to each other",
+        "they are only designed for small amounts of data"
+      ]
+    },
+    {
+      "id": "af_xcom_02",
+      "type": "in_scope",
+      "question": "Comment pousse-t-on une valeur dans un XCom depuis une tâche Airflow ?",
+      "ground_truth": "Avec la méthode xcom_push de l'instance de tâche, par exemple task_instance.xcom_push(key=..., value=...). Beaucoup d'opérateurs, ainsi que les fonctions @task, poussent aussi automatiquement leur résultat sous la clé return_value.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "task_instance.xcom_push(key=",
+        "auto-push their results into an XCom key called return_value"
+      ]
+    },
+    {
+      "id": "af_xcom_03",
+      "type": "in_scope",
+      "question": "Pourquoi les XComs d'une tâche Airflow sont-ils effacés à chaque nouvelle tentative (retry) ?",
+      "ground_truth": "Si la première tentative a échoué, les XComs sont effacés à chaque retry pour rendre l'exécution de la tâche idempotente ; on ne peut donc pas s'en servir pour conserver un état entre tentatives.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "on every retry task XComs will be cleared to make the task run idempotent"
+      ]
+    },
+    {
+      "id": "af_xcom_04",
+      "type": "in_scope",
+      "question": "Que fait xcom_pull() appelé sans argument task_ids ?",
+      "ground_truth": "Il ne lit que la tâche courante (en Airflow 2, il cherchait dans toutes les tâches et renvoyait la valeur la plus récente) ; il faut toujours préciser task_ids pour lire d'autres tâches.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "without a task_ids argument pulls only from the current task"
+      ]
+    },
+    {
+      "id": "af_xcom_05",
+      "type": "in_scope",
+      "question": "Quelle est la différence entre les XComs et les Variables dans Airflow ?",
+      "ground_truth": "Les XComs sont propres à une instance de tâche et servent à communiquer au sein d'un Dag run ; les Variables sont globales et servent à la configuration et au partage de valeurs.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "XComs are per-task-instance and designed for communication within a Dag run, while Variables are global"
+      ]
+    },
+    {
+      "id": "af_xcom_06",
+      "type": "in_scope",
+      "question": "Comment implémenter un backend XCom personnalisé dans Airflow ?",
+      "ground_truth": "En sous-classant BaseXCom et en surchargeant serialize_value et deserialize_value ; le backend utilisé se choisit avec l'option de configuration xcom_backend.",
+      "expected_sources": [
+        "airflow_04_xcoms.md"
+      ],
+      "evidence": [
+        "you should subclass BaseXCom, and override the serialize_value and deserialize_value methods"
+      ]
+    },
+    {
+      "id": "af_ops_01",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un Operator dans Airflow ?",
+      "ground_truth": "Conceptuellement, un modèle (template) de tâche prédéfinie que l'on déclare dans un Dag, par exemple BashOperator ou PythonOperator. Le décorateur @task est recommandé plutôt que le PythonOperator classique.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "An Operator is conceptually a template for a predefined Task"
+      ]
+    },
+    {
+      "id": "af_ops_02",
+      "type": "in_scope",
+      "question": "Quelle est la différence entre une Task et un Operator dans Airflow ?",
+      "ground_truth": "Une Task est l'unité d'exécution générique d'un Dag ; un Operator est un modèle de tâche réutilisable et préconstruit, dont la logique est déjà écrite et qui n'attend que des arguments.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "we mean the generic \"unit of execution\" of a",
+        "reusable, pre-made Task template"
+      ]
+    },
+    {
+      "id": "af_ops_03",
+      "type": "in_scope",
+      "question": "À quel moment la substitution des templates Jinja a-t-elle lieu pour un opérateur Airflow ?",
+      "ground_truth": "Juste avant l'appel de la méthode pre_execute de l'opérateur.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "Template substitution occurs just before the pre_execute function of your operator is called."
+      ]
+    },
+    {
+      "id": "af_ops_04",
+      "type": "in_scope",
+      "question": "Comment obtenir un objet Python natif (dictionnaire, liste) plutôt qu'une chaîne lors du rendu d'un template Jinja dans Airflow ?",
+      "ground_truth": "En passant render_template_as_native_obj=True au Dag, ce qui fait utiliser NativeEnvironment, ou en utilisant un callable.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "passing render_template_as_native_obj=True to the Dag"
+      ]
+    },
+    {
+      "id": "af_ops_05",
+      "type": "in_scope",
+      "question": "Pourquoi faut-il quatre accolades pour écrire un template Jinja dans une f-string Python d'un champ Airflow ?",
+      "ground_truth": "Les f-strings interprètent {{ et }} comme des accolades littérales simples : pour que la chaîne finale contienne les doubles accolades attendues par Jinja, il faut les doubler encore, soit quatre accolades.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "you must escape the braces for the f-string by doubling them again"
+      ]
+    },
+    {
+      "id": "af_ops_06",
+      "type": "in_scope",
+      "question": "Quelle différence y a-t-il entre pre_execute/post_execute et les tâches setup/teardown ?",
+      "ground_truth": "pre_execute et post_execute s'exécutent avant et après l'opérateur, au niveau d'une instance de tâche ; setup et teardown sont des tâches spéciales qui préparent ou nettoient avant et après plusieurs instances de tâches d'un Dag run.",
+      "expected_sources": [
+        "airflow_02_operators.md"
+      ],
+      "evidence": [
+        "are called before and after the operator is executed at the individual task instance level"
+      ]
+    },
+    {
+      "id": "af_sched_01",
+      "type": "in_scope",
+      "question": "À quelle fréquence le scheduler Airflow vérifie-t-il par défaut si des tâches peuvent être déclenchées ?",
+      "ground_truth": "Une fois par minute par défaut : il collecte les résultats du parsing des Dags et vérifie si des tâches actives peuvent être déclenchées.",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "Once per minute, by default, the scheduler collects Dag parsing results and checks whether any active tasks can be triggered."
+      ]
+    },
+    {
+      "id": "af_sched_02",
+      "type": "in_scope",
+      "question": "Comment démarre-t-on le scheduler Airflow et quelle configuration utilise-t-il ?",
+      "ground_truth": "Avec la commande airflow scheduler ; il utilise la configuration définie dans airflow.cfg.",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "execute the airflow scheduler command. It uses the configuration specified in airflow.cfg."
+      ]
+    },
+    {
+      "id": "af_sched_03",
+      "type": "in_scope",
+      "question": "Quand un Dag planifié avec @daily est-il déclenché ?",
+      "ground_truth": "Après la fin de la période qu'il couvre : le scheduler exécute le job un intervalle après la date de début, à la fin de l'intervalle (par exemple, le run dont l'intervalle commence le 2019-11-21 se déclenche après 2019-11-21T23:59).",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "A job with schedule set as @daily runs after the day has ended."
+      ]
+    },
+    {
+      "id": "af_sched_04",
+      "type": "in_scope",
+      "question": "Quelles bases de données permettent de faire tourner plusieurs schedulers Airflow ?",
+      "ground_truth": "PostgreSQL 12+ et MySQL 8.0+ sont pleinement supportés. MariaDB avant 10.6.0 ne l'est pas (pas de SKIP LOCKED ni NOWAIT), et SQL Server n'a pas été testé.",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "users of PostgreSQL 12+ or MySQL 8.0+ are all ready to go"
+      ]
+    },
+    {
+      "id": "af_sched_05",
+      "type": "in_scope",
+      "question": "Comment plusieurs schedulers Airflow évitent-ils d'entrer en même temps dans la section critique ?",
+      "ground_truth": "Avec des verrous de ligne dans la base de données (SELECT ... FOR UPDATE).",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "we use database row-level locks (using SELECT ... FOR UPDATE)"
+      ]
+    },
+    {
+      "id": "af_sched_06",
+      "type": "in_scope",
+      "question": "Quelle solution est recommandée pour gérer les connexions à la base dans une installation Airflow sur Postgres ?",
+      "ground_truth": "Utiliser PGBouncer comme proxy devant la base de données.",
+      "expected_sources": [
+        "airflow_03_scheduler.md"
+      ],
+      "evidence": [
+        "the best solution is to use PGBouncer as a proxy to your database"
+      ]
+    },
+    {
+      "id": "af_dags_01",
+      "type": "in_scope",
+      "question": "Qu'est-ce qu'un Dag dans Apache Airflow ?",
+      "ground_truth": "Un modèle qui encapsule tout ce qui est nécessaire pour exécuter un workflow : planification (schedule), tâches, dépendances entre tâches, callbacks et autres paramètres.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "A Dag is a model that encapsulates everything needed to execute a workflow."
+      ]
+    },
+    {
+      "id": "af_dags_02",
+      "type": "in_scope",
+      "question": "Quelles sont les trois façons de déclarer un Dag dans Airflow ?",
+      "ground_truth": "Avec un context manager (instruction with), avec le constructeur standard en passant le Dag aux opérateurs, ou avec le décorateur @dag.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "There are three ways to declare a Dag"
+      ]
+    },
+    {
+      "id": "af_dags_03",
+      "type": "in_scope",
+      "question": "Quelle est la règle de déclenchement (trigger_rule) par défaut d'une tâche Airflow ?",
+      "ground_truth": "all_success : toutes les tâches en amont doivent avoir réussi.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "all_success (default): All upstream tasks have succeeded"
+      ]
+    },
+    {
+      "id": "af_dags_04",
+      "type": "in_scope",
+      "question": "Pourquoi éviter all_success sur une tâche en aval d'un branchement dans Airflow ?",
+      "ground_truth": "Les tâches sautées (skipped) par le branchement se propagent à travers all_success et all_failed, ce qui fait sauter la tâche de jointure ; il vaut mieux lui donner la règle none_failed_min_one_success.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "You almost never want to use all_success or all_failed downstream of a branching operation",
+        "By setting trigger_rule to none_failed_min_one_success in the join task"
+      ]
+    },
+    {
+      "id": "af_dags_05",
+      "type": "in_scope",
+      "question": "Que fait le paramètre depends_on_past d'une tâche Airflow ?",
+      "ground_truth": "La tâche ne s'exécute que si son exécution dans le Dag run précédent a réussi ; lors du tout premier run automatisé, elle s'exécute quand même.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "can only run if the previous run of the task in the previous Dag Run succeeded"
+      ]
+    },
+    {
+      "id": "af_dags_06",
+      "type": "in_scope",
+      "question": "Comment Airflow choisit-il les fichiers Python à examiner pour y chercher des Dags ?",
+      "ground_truth": "Par optimisation, il ne considère que les fichiers contenant les chaînes airflow et dag (sans tenir compte de la casse) ; on peut désactiver ce comportement avec DAG_DISCOVERY_SAFE_MODE, et exclure des fichiers avec .airflowignore.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "Airflow only considers Python files that contain the strings airflow and dag (case-insensitively) as an optimization."
+      ]
+    },
+    {
+      "id": "af_dags_07",
+      "type": "in_scope",
+      "question": "Quelles sont les étapes pour supprimer complètement un Dag et son historique dans Airflow ?",
+      "ground_truth": "Mettre le Dag en pause, supprimer ses métadonnées historiques via l'interface ou l'API, puis supprimer le fichier du Dag de DAGS_FOLDER et attendre qu'il devienne inactif.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "delete the historical metadata from the database, via UI or API",
+        "delete the Dag file from the DAGS_FOLDER and wait until it becomes inactive"
+      ]
+    },
+    {
+      "id": "af_dags_08",
+      "type": "in_scope",
+      "question": "Quelle est la syntaxe par défaut du fichier .airflowignore dans Airflow 3 ?",
+      "ground_truth": "glob (dans les versions précédentes, c'était regexp).",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "The default DAG_IGNORE_FILE_SYNTAX is glob in Airflow 3 or later"
+      ]
+    },
+    {
+      "id": "af_dags_09",
+      "type": "in_scope",
+      "question": "Comment tester un Dag Airflow sans le déployer ?",
+      "ground_truth": "Appeler dag.test(), par exemple à la fin du module, ce qui simule l'exécution du Dag (comparable à une session LocalExecutor) ; avec use_executor, on teste avec l'executor réellement configuré.",
+      "expected_sources": [
+        "airflow_01_dags.md"
+      ],
+      "evidence": [
+        "The dag.test() call will invoke a simulated execution flow"
+      ]
+    },
+    {
+      "id": "af_best_01",
+      "type": "in_scope",
+      "question": "Pourquoi une tâche Airflow doit-elle produire le même résultat à chaque exécution, et comment y parvenir ?",
+      "ground_truth": "Parce qu'Airflow peut relancer une tâche en échec. Il faut remplacer INSERT par UPSERT, lire et écrire dans une partition précise (par exemple data_interval_start) plutôt que les dernières données disponibles, et ne pas utiliser now() pour des calculs critiques.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "the tasks should produce the same outcome on every re-run",
+        "Replace it with UPSERT."
+      ]
+    },
+    {
+      "id": "af_best_02",
+      "type": "in_scope",
+      "question": "Pourquoi faut-il éviter le code de haut niveau (top-level code) dans un fichier de Dag Airflow ?",
+      "ground_truth": "Le scheduler exécute le code situé hors des méthodes execute à chaque parsing du fichier ; accès à la base, calculs lourds, appels réseau et imports coûteux y dégradent les performances du scheduler.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "Specifically you should not run any database access, heavy computations and networking operations."
+      ]
+    },
+    {
+      "id": "af_best_03",
+      "type": "in_scope",
+      "question": "Comment utiliser une Variable Airflow sans ralentir le parsing des Dags ?",
+      "ground_truth": "Ne pas appeler Variable.get() dans le code de haut niveau, car sans cache il fait une requête à chaque parsing ; lire la variable dans execute() ou via un template Jinja, qui retarde la lecture à l'exécution de la tâche.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "Variable.get() produces a request every time the Dag file is parsed by the scheduler if caching is not enabled"
+      ]
+    },
+    {
+      "id": "af_best_04",
+      "type": "in_scope",
+      "question": "Comment faire échouer un Dag run quand une tâche échoue alors qu'une tâche teardown réussit toujours ?",
+      "ground_truth": "Avec le watcher pattern : une tâche watcher qui échoue toujours quand elle est déclenchée, avec la règle TriggerRule.ONE_FAILED, placée en aval de toutes les autres tâches.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "It needs to have a trigger rule set to TriggerRule.ONE_FAILED"
+      ]
+    },
+    {
+      "id": "af_best_05",
+      "type": "in_scope",
+      "question": "Comment les tâches d'un Dag Airflow devraient-elles s'échanger des données volumineuses ?",
+      "ground_truth": "Via un stockage distant comme S3 ou HDFS (en passant par exemple le chemin via XCom), XCom étant réservé aux petits messages ; il ne faut pas stocker de fichiers sur le disque local.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "a good way of passing larger data between tasks is to use a remote storage such as S3/HDFS"
+      ]
+    },
+    {
+      "id": "af_best_06",
+      "type": "in_scope",
+      "question": "Où faut-il stocker les mots de passe et identifiants utilisés par les tâches Airflow ?",
+      "ground_truth": "Pas dans les tâches : dans les Connections, stockées de façon sécurisée dans le backend Airflow et récupérées par un identifiant de connexion.",
+      "expected_sources": [
+        "airflow_05_best_practices.md"
+      ],
+      "evidence": [
+        "use Connections to store data securely in Airflow backend"
+      ]
+    },
+    {
+      "id": "oos_01",
+      "type": "out_of_scope",
+      "question": "Quel est le chiffre d'affaires de TotalEnergies en 2024 ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_02",
+      "type": "out_of_scope",
+      "question": "Comment créer un flow dans Prefect ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_03",
+      "type": "out_of_scope",
+      "question": "Quelle est la différence entre un DataFrame Pandas et un DataFrame Polars ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_04",
+      "type": "out_of_scope",
+      "question": "Comment créer un tableau de bord dans Power BI ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_05",
+      "type": "out_of_scope",
+      "question": "Combien coûte une licence dbt Cloud Enterprise ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_06",
+      "type": "out_of_scope",
+      "question": "Comment configurer l'auto-suspend d'un warehouse Snowflake à 60 secondes ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_07",
+      "type": "out_of_scope",
+      "question": "Quelle est la capitale de l'Australie ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_08",
+      "type": "out_of_scope",
+      "question": "Comment configurer un processeur GetFile dans Apache NiFi ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_09",
+      "type": "out_of_scope",
+      "question": "Comment configurer Kafka Connect pour écrire dans PostgreSQL ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_10",
+      "type": "out_of_scope",
+      "question": "Qui a fondé l'entreprise dbt Labs et en quelle année ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_11",
+      "type": "out_of_scope",
+      "question": "Comment entraîner une régression logistique avec scikit-learn ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    },
+    {
+      "id": "oos_12",
+      "type": "out_of_scope",
+      "question": "Comment définir un asset dans Dagster ?",
+      "ground_truth": "Je ne trouve pas cette information dans les documents fournis.",
+      "expected_sources": [],
+      "evidence": []
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Dépendances légères pour les tests unitaires et la CI (aucun modèle, aucune base vectorielle).
+# Les versions suivent requirements.txt.
+numpy
+pandas
+requests==2.34.2
+python-dotenv==1.2.3
+langchain-core
+langchain-ollama==1.1.0
+langchain-text-splitters==1.1.2
+fastapi==0.141.1
+httpx
+pytest
+ruff

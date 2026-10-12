@@ -18,8 +18,6 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
-import chromadb
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import (CHROMA_COLLECTION_NAME, CHROMA_PERSIST_DIR, CHUNKS_PATH,
                     EMBEDDING_MODEL_NAME, EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX,
@@ -35,7 +33,8 @@ class IndexNotReadyError(RuntimeError):
 
 
 @lru_cache(maxsize=1)
-def get_client() -> chromadb.ClientAPI:
+def get_client():
+    import chromadb  # import local : les tests unitaires (CI) n'ont pas besoin de ChromaDB
     return chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
 
 

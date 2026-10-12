@@ -88,10 +88,9 @@ def _in_contexts(fragment: str, contexts_norm: list[str]) -> bool:
 
 
 def _code_in_contexts(span: str, contexts_norm: list[str]) -> bool:
-    candidates = {normalize(span)}
+    # Même normalisation que les contextes (marqueurs Markdown retirés des deux côtés).
     bare = re.sub(r"\(\s*\)$", "", span).strip()          # xcom_push() -> xcom_push
-    candidates.add(normalize(bare))
-    candidates.add(normalize(bare.lstrip("@")))           # @task -> task
+    candidates = {normalize(_strip_markdown(s)) for s in (span, bare, bare.lstrip("@"))}  # @task -> task
     return any(c and any(c in ctx for ctx in contexts_norm) for c in candidates)
 
 
