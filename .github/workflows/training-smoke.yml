@@ -1,0 +1,29 @@
+name: Smoke test DPO
+
+# Vérifie la plomberie de l'entraînement DPO (TRL + PEFT) sur CPU avec un modèle minuscule.
+# Lancé seulement quand le code d'entraînement change : l'installation de torch est longue.
+on:
+  push:
+    branches: [main]
+    paths: ["training/**", "rag_chain/**", "requirements-train.txt", "tests/test_train_dpo_smoke.py"]
+  pull_request:
+    paths: ["training/**", "rag_chain/**", "requirements-train.txt", "tests/test_train_dpo_smoke.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dpo-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: torch CPU puis dépendances d'entraînement
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          grep -v bitsandbytes requirements-train.txt > /tmp/req-train-cpu.txt
+          pip install -r /tmp/req-train-cpu.txt -r requirements-dev.txt
+      - run: pytest -q tests/test_train_dpo_smoke.py tests/test_training.py

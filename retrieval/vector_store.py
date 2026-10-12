@@ -14,14 +14,22 @@ configuration réellement indexée, et non celle du .env au moment de l'évaluat
 Utilisable seule (sans LLM) pour valider le retrieval avant de brancher la génération.
 """
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import (CHROMA_COLLECTION_NAME, CHROMA_PERSIST_DIR, CHUNKS_PATH,
-                    EMBEDDING_MODEL_NAME, EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX,
-                    RERANKER_MODEL_NAME, RETRIEVAL_CANDIDATES, TOP_K)
+from config import (
+    CHROMA_COLLECTION_NAME,
+    CHROMA_PERSIST_DIR,
+    CHUNKS_PATH,
+    EMBEDDING_MODEL_NAME,
+    EMBEDDING_PASSAGE_PREFIX,
+    EMBEDDING_QUERY_PREFIX,
+    RERANKER_MODEL_NAME,
+    RETRIEVAL_CANDIDATES,
+    TOP_K,
+)
 from ingestion.chunking import load_chunks
 from ingestion.embeddings import count_truncated, embed_passages, embed_query, rerank_scores
 
@@ -70,7 +78,7 @@ def index_chunks(chunks_path: Path = CHUNKS_PATH) -> int:
         "passage_prefix": EMBEDDING_PASSAGE_PREFIX,
         "n_chunks": len(chunks),
         "n_truncated": truncated,
-        "indexed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "indexed_at": datetime.now(UTC).isoformat(timespec="seconds"),
         **{k: v for k, v in params.items() if isinstance(v, (str, int, float, bool))},
     }
 
@@ -159,7 +167,7 @@ def search(query: str, k: int = TOP_K, candidates: int = RETRIEVAL_CANDIDATES,
 
     scores = rerank_scores(query, [h["text"] for h in hits]) if rerank else None
     if scores is not None:
-        for h, s in zip(hits, scores):
+        for h, s in zip(hits, scores, strict=True):
             h["rerank_score"] = s
         hits.sort(key=lambda h: h["rerank_score"], reverse=True)
     for h in hits:

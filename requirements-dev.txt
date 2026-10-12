@@ -1,4 +1,4 @@
-# Dépendances légères pour les tests unitaires et la CI (aucun modèle, aucune base vectorielle).
+# Dépendances des tests unitaires et de la CI : aucun modèle à télécharger, aucun GPU.
 # Les versions suivent requirements.txt.
 numpy
 pandas
@@ -9,5 +9,6 @@ langchain-ollama==1.1.0
 langchain-text-splitters==1.1.2
 fastapi==0.141.1
 httpx
+chromadb==1.5.9
 pytest
 ruff

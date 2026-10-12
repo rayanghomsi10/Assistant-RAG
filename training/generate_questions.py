@@ -91,7 +91,7 @@ class LeakageFilter:
         keep = [max(jaccard(content_tokens(q), t) for t in self.eval_tokens) < self.jaccard_max for q in questions]
         if self.eval_vecs is not None and questions:
             sims = self._np.asarray(self._embed(questions)) @ self.eval_vecs.T
-            keep = [k and s.max() < self.cosine_max for k, s in zip(keep, sims)]
+            keep = [k and s.max() < self.cosine_max for k, s in zip(keep, sims, strict=True)]
         return keep
 
 
@@ -139,8 +139,8 @@ def main(argv=None):
     eval_questions = [it["question"] for it in load_eval_dataset()]
     flt = LeakageFilter(eval_questions, use_embeddings=not args.no_embed_filter)
     keep = flt.keep([r["question"] for r in rows])
-    leaked = [r["question"] for r, k in zip(rows, keep) if not k]
-    rows = [r for r, k in zip(rows, keep) if k]
+    leaked = [r["question"] for r, k in zip(rows, keep, strict=True) if not k]
+    rows = [r for r, k in zip(rows, keep, strict=True) if k]
 
     random.Random(args.seed).shuffle(rows)
     for n, r in enumerate(rows):

@@ -247,7 +247,8 @@ class MdxConverter:
             elif name == "File":
                 out.append(f"File `{_prop(raw, 'name')}`:")
             elif name == "Tabs":
-                tab_labels = dict((v, l) for l, v in re.findall(r"label:\s*['\"](.+?)['\"],\s*value:\s*['\"](.+?)['\"]", raw))
+                tab_labels = {value: label for label, value in
+                              re.findall(r"label:\s*['\"](.+?)['\"],\s*value:\s*['\"](.+?)['\"]", raw)}
             elif name == "TabItem":
                 value = _prop(raw, "value") or ""
                 out.append(f"**{_prop(raw, 'label') or tab_labels.get(value, value)}**")
@@ -256,7 +257,8 @@ class MdxConverter:
             elif name in snippets:
                 snippet = self.fetch(f"{self.raw_base}{snippets[name]}")
                 props = dict((k, v) for k, _, v in re.findall(r"""(\w+)\s*=\s*(["'])(.*?)\2""", raw))
-                snippet = re.sub(r"\{props\.(\w+)\}", lambda pm: props.get(pm.group(1), pm.group(1)), snippet)
+                snippet = re.sub(r"\{props\.(\w+)\}",
+                                 lambda pm, props=props: props.get(pm.group(1), pm.group(1)), snippet)
                 _, snippet_md = self.convert(snippet)
                 out.append("\n" + snippet_md + "\n")
             # Autres balises (Lightbox, CourseCallout, VersionBlock, details…) : on garde le
@@ -370,7 +372,8 @@ class RstConverter:
             if (stripped and i + 1 < n and _UNDERLINE.match(lines[i + 1].strip())
                     and len(lines[i + 1].strip()) >= len(stripped) * 0.8 and not _UNDERLINE.match(stripped)
                     and indent == 0):
-                style = lines[i + 1].strip()[0] + ("o" if out and i > 0 and _UNDERLINE.match(lines[i - 1].strip()) else "")
+                overlined = bool(out) and i > 0 and bool(_UNDERLINE.match(lines[i - 1].strip()))
+                style = lines[i + 1].strip()[0] + ("o" if overlined else "")
                 if style not in heading_levels:
                     heading_levels.append(style)
                 if out and _UNDERLINE.match(out[-1].strip() if out else ""):

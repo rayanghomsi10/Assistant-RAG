@@ -41,5 +41,6 @@ def log_eval_run(params: dict, metrics: dict, artifacts: list[Path], run_name: s
         for path in artifacts:
             if Path(path).exists():
                 mlflow.log_artifact(str(path))
-        print(f"Run MLflow loguée ({run.info.run_id}). Visualiser : mlflow ui --backend-store-uri {MLFLOW_TRACKING_URI}")
+        print(f"Run MLflow loguée ({run.info.run_id}). "
+              f"Visualiser : mlflow ui --backend-store-uri {MLFLOW_TRACKING_URI}")
         return run.info.run_id

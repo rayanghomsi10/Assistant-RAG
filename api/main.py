@@ -87,14 +87,14 @@ def query(request: QueryRequest):
     try:
         result = answer_question(request.question, k=request.top_k)
     except IndexNotReadyError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ConnectionError as exc:
         raise HTTPException(
             status_code=503,
             detail=f"Impossible de contacter le serveur Ollama local : {exc}",
-        )
+        ) from exc
     except Exception as exc:  # timeout du modèle, erreur d'inférence, etc.
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération : {exc}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la génération : {exc}") from exc
 
     return QueryResponse(
         question=result["question"],

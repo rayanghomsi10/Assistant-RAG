@@ -33,13 +33,33 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import (JUDGE_LLM_MODEL, OLLAMA_BASE_URL, OLLAMA_LLM_MODEL, OLLAMA_NUM_CTX,
-                    RELEVANCE_THRESHOLD, RERANKER_MODEL_NAME, RETRIEVAL_CANDIDATES, TOP_K)
-from evaluation.dataset import (EVAL_DATASET_PATH, dataset_fingerprint, load_corpus_texts,
-                                load_eval_dataset, validate_dataset)
-from evaluation.metrics import (IN_SCOPE_GEN_METRICS, OUT_OF_SCOPE_METRICS, RAGAS_METRICS,
-                                RETRIEVAL_METRICS, bootstrap_ci, generation_metrics,
-                                retrieval_metrics, suggest_threshold)
+from config import (
+    JUDGE_LLM_MODEL,
+    OLLAMA_BASE_URL,
+    OLLAMA_LLM_MODEL,
+    OLLAMA_NUM_CTX,
+    RELEVANCE_THRESHOLD,
+    RERANKER_MODEL_NAME,
+    RETRIEVAL_CANDIDATES,
+    TOP_K,
+)
+from evaluation.dataset import (
+    EVAL_DATASET_PATH,
+    dataset_fingerprint,
+    load_corpus_texts,
+    load_eval_dataset,
+    validate_dataset,
+)
+from evaluation.metrics import (
+    IN_SCOPE_GEN_METRICS,
+    OUT_OF_SCOPE_METRICS,
+    RAGAS_METRICS,
+    RETRIEVAL_METRICS,
+    bootstrap_ci,
+    generation_metrics,
+    retrieval_metrics,
+    suggest_threshold,
+)
 from rag_chain.chain import below_threshold, generate
 from rag_chain.checks import REFUSAL_MESSAGE
 from retrieval.vector_store import get_index_metadata, search
@@ -83,7 +103,6 @@ def run_pipeline(items: list[dict], model: str, repeats: int, retrieval_only: bo
 
 def run_ragas(df: pd.DataFrame, items_by_id: dict) -> pd.DataFrame:
     """Ajoute les scores Ragas aux lignes du périmètre (une évaluation par répétition)."""
-    from evaluation import _ragas_compat  # noqa: F401 - doit précéder `import ragas`
     from datasets import Dataset
     from langchain_core.embeddings import Embeddings
     from langchain_ollama import ChatOllama
@@ -92,6 +111,7 @@ def run_ragas(df: pd.DataFrame, items_by_id: dict) -> pd.DataFrame:
     from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import answer_relevancy, context_precision, faithfulness
 
+    from evaluation import _ragas_compat  # noqa: F401 - doit précéder `import ragas`
     from ingestion.embeddings import embed_queries
 
     class QueryEmbeddings(Embeddings):
@@ -174,10 +194,12 @@ def retrieval_report(df: pd.DataFrame) -> dict:
     best = suggest_threshold(ins, outs)
     print("\n--- Score du meilleur chunk (calibrage de RELEVANCE_THRESHOLD) ---")
     print(f"  dans le périmètre : min {np.min(ins):.3f}  p10 {np.quantile(ins, .1):.3f}  médiane {np.median(ins):.3f}")
-    print(f"  hors périmètre    : médiane {np.median(outs):.3f}  p90 {np.quantile(outs, .9):.3f}  max {np.max(outs):.3f}")
+    print(f"  hors périmètre    : médiane {np.median(outs):.3f}  p90 {np.quantile(outs, .9):.3f}  "
+          f"max {np.max(outs):.3f}")
     if best["threshold"] is not None:
         print(f"  seuil suggéré : {best['threshold']:.3f} (exactitude équilibrée {best['balanced_accuracy']:.2f} ; "
-              f"{best['in_scope_kept']:.0%} du périmètre conservé, {best['out_scope_rejected']:.0%} du hors-périmètre rejeté)")
+              f"{best['in_scope_kept']:.0%} du périmètre conservé, "
+              f"{best['out_scope_rejected']:.0%} du hors-périmètre rejeté)")
         print("  -> Ne l'activer que si le périmètre est conservé à ~100 % : un faux rejet coûte une réponse.")
     return best
 

@@ -29,7 +29,8 @@ DEFAULT_BASE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
 OLLAMA_LLAMA3_CHAT_TEMPLATE = (
     "{{- bos_token }}"
     "{%- for message in messages %}"
-    "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] | trim + '<|eot_id|>' }}"
+    "{{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' }}"
+    "{{- message['content'] | trim + '<|eot_id|>' }}"
     "{%- endfor %}"
     "{%- if add_generation_prompt %}{{- '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{%- endif %}"
 )

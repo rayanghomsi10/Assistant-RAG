@@ -27,8 +27,7 @@ from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import (CHUNK_OVERLAP_TOKENS, CHUNK_SIZE_TOKENS, CHUNKS_PATH, CORPUS_DIR,
-                    EMBEDDING_MODEL_NAME)
+from config import CHUNK_OVERLAP_TOKENS, CHUNK_SIZE_TOKENS, CHUNKS_PATH, CORPUS_DIR, EMBEDDING_MODEL_NAME
 
 TokenCounter = Callable[[str], int]
 

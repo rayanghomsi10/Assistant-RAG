@@ -16,8 +16,13 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from evaluation.metrics import (IN_SCOPE_GEN_METRICS, OUT_OF_SCOPE_METRICS, RAGAS_METRICS,
-                                RETRIEVAL_METRICS, paired_bootstrap)
+from evaluation.metrics import (
+    IN_SCOPE_GEN_METRICS,
+    OUT_OF_SCOPE_METRICS,
+    RAGAS_METRICS,
+    RETRIEVAL_METRICS,
+    paired_bootstrap,
+)
 
 RESULTS_DIR = Path(__file__).parent / "results"
 # Métriques où une baisse est une amélioration.

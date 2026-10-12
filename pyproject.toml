@@ -1,0 +1,21 @@
+[project]
+name = "assistant-rag"
+version = "2.0.0"
+description = "Assistant RAG sur la documentation dbt et Apache Airflow, avec évaluation mesurée et alignement DPO"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["training/dpo_colab.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# E402 : les scripts ajoutent la racine du projet à sys.path avant leurs imports internes.
+ignore = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "ingestion", "retrieval", "rag_chain", "api", "evaluation", "training"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

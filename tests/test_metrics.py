@@ -1,7 +1,6 @@
 import numpy as np
 
-from evaluation.metrics import (bootstrap_ci, generation_metrics, paired_bootstrap,
-                                retrieval_metrics, suggest_threshold)
+from evaluation.metrics import bootstrap_ci, generation_metrics, paired_bootstrap, retrieval_metrics, suggest_threshold
 
 ITEM = {"id": "x", "type": "in_scope", "expected_sources": ["airflow_04_xcoms.md"],
         "evidence": ["only designed for small amounts of data", "xcom_push and xcom_pull methods"]}

@@ -1,5 +1,12 @@
-from rag_chain.checks import (REFUSAL_MESSAGE, check_answer, cited_documents, extract_code_spans,
-                              extract_quotes, is_clean_refusal, is_refusal)
+from rag_chain.checks import (
+    REFUSAL_MESSAGE,
+    check_answer,
+    cited_documents,
+    extract_code_spans,
+    extract_quotes,
+    is_clean_refusal,
+    is_refusal,
+)
 
 CONTEXT = ('XComs are explicitly "pushed" and "pulled" to/from their storage using the `xcom_push` '
            "and `xcom_pull` methods on Task Instances. They are only designed for small amounts of data.")

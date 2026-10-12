@@ -14,8 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import (EMBEDDING_MODEL_NAME, EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX,
-                    RERANKER_MODEL_NAME)
+from config import EMBEDDING_MODEL_NAME, EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX, RERANKER_MODEL_NAME
 
 
 @lru_cache(maxsize=1)
