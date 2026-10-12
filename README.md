@@ -151,13 +151,14 @@ du meilleur chunk dans et hors périmètre, pour calibrer un éventuel seuil de 
 
 ## Résultats
 
-Les résultats de la V2 (corpus, index, jeu d'évaluation et juge nouveaux) sont à produire avec
-`python evaluation/run_eval.py --run-name baseline_v2` ; ils ne sont pas comparables à ceux de la
-V1, archivés dans `evaluation/results/v1/` (voir « Historique »).
+Les résultats de la V2 (corpus, index, jeu d'évaluation et juge nouveaux) sont produits avec
+`python evaluation/run_eval.py --run-name baseline_v2 --repeats 2` ; ils ne sont pas comparables
+à ceux de la V1, archivés dans `evaluation/results/v1/` (voir « Historique »). Moyenne et
+intervalle de confiance à 95 %, détail dans `evaluation/results/baseline_v2/`.
 
 | Run | evidence_hit | false_refusal | quotes_faithful | faithfulness | answer_relevancy | correct_refusal |
 |---|---|---|---|---|---|---|
-| `baseline_v2` | à mesurer | | | | | |
+| `baseline_v2` | 0,973 [0,932 ; 1,000] | 0,000 [0,000 ; 0,000] | 1,000 [1,000 ; 1,000] | 0,864 [0,802 ; 0,921] | 0,926 [0,909 ; 0,939] | 1,000 [1,000 ; 1,000] |
 | `dpo_v1` | à mesurer | | | | | |
 
 ## Alignement du générateur par DPO

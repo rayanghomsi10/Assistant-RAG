@@ -1,0 +1,165 @@
+{
+  "params": {
+    "index_chunk_overlap_tokens": 50,
+    "index_n_truncated": 0,
+    "index_chunker_version": "sections-v2",
+    "index_passage_prefix": "passage: ",
+    "index_chunk_size_tokens": 400,
+    "index_corpus_sha": "b85ef783b008",
+    "index_embedding_model": "intfloat/multilingual-e5-small",
+    "index_indexed_at": "2026-10-12T19:08:14+00:00",
+    "index_n_chunks": 207,
+    "index_chunk_tokenizer": "intfloat/multilingual-e5-small",
+    "index_query_prefix": "query: ",
+    "generator_model": "llama3.1:8b",
+    "judge_model": "qwen2.5:7b",
+    "top_k": 4,
+    "retrieval_candidates": 20,
+    "reranker": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+    "relevance_threshold": "none",
+    "num_ctx": 8192,
+    "repeats": 2,
+    "n_questions": 85,
+    "eval_dataset_sha": "5d73513c1f93",
+    "mode": "full"
+  },
+  "metrics": {
+    "evidence_recall": {
+      "mean": 0.9657534246575342,
+      "ci_low": 0.9246575342465754,
+      "ci_high": 1.0,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "evidence_hit": {
+      "mean": 0.9726027397260274,
+      "ci_low": 0.9315068493150684,
+      "ci_high": 1.0,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "source_hit": {
+      "mean": 0.9863013698630136,
+      "ci_low": 0.958904109589041,
+      "ci_high": 1.0,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "mrr": {
+      "mean": 0.8630136986301369,
+      "ci_low": 0.800228310502283,
+      "ci_high": 0.9212328767123288,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "answered": {
+      "mean": 0.9863013698630136,
+      "ci_low": 0.958904109589041,
+      "ci_high": 1.0,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "false_refusal": {
+      "mean": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "has_citation": {
+      "mean": 0.9375,
+      "ci_low": 0.875,
+      "ci_high": 0.9861111111111112,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.009820927516479791
+    },
+    "citations_valid": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.0
+    },
+    "cites_expected_source": {
+      "mean": 0.9097222222222222,
+      "ci_low": 0.8402777777777778,
+      "ci_high": 0.9722222222222222,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.009820927516479791
+    },
+    "quotes_faithful": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.0
+    },
+    "code_support": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.0
+    },
+    "faithfulness": {
+      "mean": 0.8640344416386083,
+      "ci_low": 0.8016497001262625,
+      "ci_high": 0.9214439972643099,
+      "n": 72,
+      "n_missing": 1,
+      "std_between_repeats": 0.004501258445053303
+    },
+    "answer_relevancy": {
+      "mean": 0.9264124300416972,
+      "ci_low": 0.9089845344199048,
+      "ci_high": 0.9386895441178617,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.007748673558708248
+    },
+    "context_precision": {
+      "mean": 0.860730593549315,
+      "ci_low": 0.7994577624972606,
+      "ci_high": 0.9174277016140285,
+      "n": 73,
+      "n_missing": 0,
+      "std_between_repeats": 0.0016143990432398855
+    },
+    "correct_refusal": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 12,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "clean_refusal": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 12,
+      "n_missing": 0,
+      "std_between_repeats": 0.0
+    },
+    "latency_s_median": {
+      "mean": 2.385
+    }
+  },
+  "threshold_suggestion": {
+    "threshold": 1.668104887008667,
+    "balanced_accuracy": 0.9863013698630136,
+    "in_scope_kept": 0.9726027397260274,
+    "out_scope_rejected": 1.0
+  }
+}
