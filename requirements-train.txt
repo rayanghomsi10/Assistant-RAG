@@ -1,0 +1,8 @@
+# Entraînement DPO (GPU CUDA : Colab / Kaggle). torch est préinstallé sur ces plateformes ;
+# ailleurs, l'installer d'abord depuis https://pytorch.org pour sa version de CUDA.
+transformers==5.19.0
+trl==1.15.0
+peft==0.21.2
+bitsandbytes==0.50.2
+accelerate==1.15.0
+datasets==5.1.0
