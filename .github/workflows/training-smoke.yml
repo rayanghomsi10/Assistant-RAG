@@ -1,6 +1,8 @@
 name: Smoke test DPO
 
-# Vérifie la plomberie de l'entraînement DPO (TRL + PEFT) sur CPU avec un modèle minuscule.
+# Vérifie la plomberie de l'entraînement DPO (TRL + PEFT) sur CPU avec un modèle minuscule :
+# données, gabarit de chat, tokenisation, LoRA. Les pas d'entraînement exigent un GPU (noyau
+# Triton de TRL) et ne sont exécutés que sur GPU (voir tests/test_train_dpo_smoke.py).
 # Lancé seulement quand le code d'entraînement change : l'installation de torch est longue.
 on:
   push:
