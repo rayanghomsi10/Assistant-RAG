@@ -64,9 +64,16 @@ def product_of(source: str) -> str:
 
 def generate_for_chunk(llm, chunk: dict, n: int) -> list[str]:
     msg = PROMPT.format(product=product_of(chunk["source"]), text=chunk["text"], n=n)
-    raw = llm.invoke(msg).content
+    from ollama import ResponseError
+
     try:
+        raw = llm.invoke(msg).content
         questions = json.loads(raw).get("questions", [])
+    except ResponseError as exc:
+        # En mode JSON, le modèle boucle parfois sur un même token : Ollama interrompt la
+        # génération. On passe ce chunk plutôt que de perdre toutes les questions déjà générées.
+        print(f"  !! {chunk['id']} ignoré : {exc}")
+        return []
     except (json.JSONDecodeError, AttributeError):
         return []
     return [q.strip() for q in questions if isinstance(q, str) and q.strip().endswith("?")][:n]
@@ -76,7 +83,7 @@ class LeakageFilter:
     """Écarte les questions trop proches des questions d'évaluation."""
 
     def __init__(self, eval_questions: list[str], jaccard_max: float = 0.5,
-                 cosine_max: float = 0.88, use_embeddings: bool = True):
+                 cosine_max: float | None = None, use_embeddings: bool = True):
         self.eval_tokens = [content_tokens(q) for q in eval_questions]
         self.jaccard_max, self.cosine_max = jaccard_max, cosine_max
         self.eval_vecs = None
@@ -86,6 +93,15 @@ class LeakageFilter:
             from ingestion.embeddings import embed_queries
             self._embed, self._np = embed_queries, np
             self.eval_vecs = np.asarray(embed_queries(eval_questions))
+            if self.cosine_max is None:
+                # L'échelle des similarités dépend du modèle d'embeddings (avec multilingual-e5,
+                # deux questions sans rapport dépassent déjà 0,8) : un seuil fixe écarte presque
+                # tout. On le calibre sur le jeu d'évaluation lui-même, dont les questions sont
+                # distinctes : n'est une fuite que ce qui est plus proche d'une question
+                # d'évaluation que ne le sont entre elles les deux plus proches.
+                sims = self.eval_vecs @ self.eval_vecs.T
+                np.fill_diagonal(sims, -1.0)
+                self.cosine_max = float(sims.max())
 
     def keep(self, questions: list[str]) -> list[bool]:
         keep = [max(jaccard(content_tokens(q), t) for t in self.eval_tokens) < self.jaccard_max for q in questions]
@@ -151,6 +167,8 @@ def main(argv=None):
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     n_in = sum(r["type"] == "in_scope" for r in rows)
+    if flt.eval_vecs is not None:
+        print(f"\nSeuil anti-fuite (cosinus, calibré sur le jeu d'évaluation) : {flt.cosine_max:.3f}")
     print(f"\n{n_generated} questions générées, {len(rows)} conservées "
           f"({n_in} dans le périmètre, {len(rows) - n_in} hors périmètre) ; "
           f"{len(leaked)} écartées car trop proches de l'évaluation.")
