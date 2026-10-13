@@ -103,6 +103,9 @@ def run_pipeline(items: list[dict], model: str, repeats: int, retrieval_only: bo
 
 def run_ragas(df: pd.DataFrame, items_by_id: dict) -> pd.DataFrame:
     """Ajoute les scores Ragas aux lignes du périmètre (une évaluation par répétition)."""
+    # Doit précéder `import ragas` ; « isort: split » empêche le tri de le redescendre.
+    from evaluation import _ragas_compat  # noqa: F401
+    # isort: split
     from datasets import Dataset
     from langchain_core.embeddings import Embeddings
     from langchain_ollama import ChatOllama
@@ -111,7 +114,6 @@ def run_ragas(df: pd.DataFrame, items_by_id: dict) -> pd.DataFrame:
     from ragas.llms import LangchainLLMWrapper
     from ragas.metrics import answer_relevancy, context_precision, faithfulness
 
-    from evaluation import _ragas_compat  # noqa: F401 - doit précéder `import ragas`
     from ingestion.embeddings import embed_queries
 
     class QueryEmbeddings(Embeddings):
@@ -191,6 +193,8 @@ def print_summary(summary: dict) -> None:
 def retrieval_report(df: pd.DataFrame) -> dict:
     ins = df[df["type"] == "in_scope"].drop_duplicates("id")["top_score"].tolist()
     outs = df[df["type"] == "out_of_scope"].drop_duplicates("id")["top_score"].tolist()
+    if not ins or not outs:  # --limit peut ne garder qu'un seul des deux types de questions
+        return {"threshold": None, "balanced_accuracy": 0.0}
     best = suggest_threshold(ins, outs)
     print("\n--- Score du meilleur chunk (calibrage de RELEVANCE_THRESHOLD) ---")
     print(f"  dans le périmètre : min {np.min(ins):.3f}  p10 {np.quantile(ins, .1):.3f}  médiane {np.median(ins):.3f}")
