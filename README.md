@@ -30,9 +30,12 @@ statistique, et n'améliore le modèle qu'avec un signal de récompense qu'on pe
   retrieval/vector_store.py               multilingual-e5 -> ChromaDB (top 20)
         │                                 -> reranker cross-encoder multilingue (top 4)
         ▼
-  rag_chain/chain.py                      prompt (sources citées, refus explicite) -> Ollama
+  rag_chain/chain.py                      relance reformulée si historique -> recherche ->
+        │                                 prompt (sources citées, refus explicite) -> Ollama
+        │   rag_chain/complements.py      mises en garde : recherche dédiée -> LLM -> NLI (option)
+        │   rag_chain/tracing.py          traces Langfuse (optionnel)
         │
-        ├── api/main.py                   FastAPI POST /query, GET /health
+        ├── api/main.py                   FastAPI POST /query, GET /health, interface web sur /
         │
         ├── evaluation/                   métriques déterministes + Ragas (juge distinct)
         │                                 + IC bootstrap -> MLflow ; compare_runs.py
@@ -50,7 +53,9 @@ statistique, et n'améliore le modèle qu'avec un signal de récompense qu'on pe
 | Reranker | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | Multilingue, léger ; recherche vectorielle large (20) puis top 4 |
 | Base vectorielle | ChromaDB (client persistant) | La configuration d'indexation est stockée dans la collection et vérifiée à chaque recherche |
 | Orchestration | LangChain (LCEL) | Un seul prompt, partagé par l'inférence et l'entraînement |
-| API | FastAPI | Sources citées vs récupérées, (ré)indexation automatique au démarrage |
+| API | FastAPI | Sources citées vs récupérées, historique de conversation, (ré)indexation automatique au démarrage |
+| Interface | HTML/JS servi par l'API | Passages et scores, refus, question reformulée, compléments, lien de trace |
+| Observabilité | Langfuse (local via Docker, ou Cloud) | Une trace par question ; métriques d'évaluation attachées comme scores |
 | Évaluation | Métriques déterministes + Ragas | Juge `qwen2.5:7b`, distinct du générateur ; IC bootstrap à 95 % |
 | Suivi | MLflow (SQLite) | Configuration réellement indexée, commit git, empreinte du jeu d'éval, artefacts |
 | Alignement | TRL (DPO) + PEFT (QLoRA) | Llama 3.1 8B Instruct, sur GPU Colab/Kaggle ; export vers Ollama |
@@ -108,6 +113,7 @@ uvicorn api.main:app --reload --port 8000
 python evaluation/run_eval.py --retrieval-only               # retrieval seul, quelques secondes
 python evaluation/run_eval.py --run-name baseline_v2         # complet (génération + Ragas)
 python evaluation/compare_runs.py baseline_v2 autre_run      # comparaison appariée
+python evaluation/run_conversation_eval.py --run-name memoire_v1   # relances : brute vs reformulée
 mlflow ui --backend-store-uri sqlite:///mlruns.db            # http://127.0.0.1:5000
 ```
 
@@ -278,6 +284,12 @@ entraînement DPO minuscule sur CPU quand le code d'entraînement change.
   Ollama local sert en série ; `RunConfig(max_workers=2, timeout=300)` évite les `TimeoutError`.
 - **Compatibilité ragas 0.4.3 / langchain-community** : contournement d'un import VertexAI
   retiré, dans `evaluation/_ragas_compat.py` (sans impact fonctionnel).
+- **Mémoire de conversation** : la reformulation coûte un appel au LLM par relance et se trompe
+  parfois (4 relances sur 18 ne retrouvent pas le bon passage, souvent parce que la question
+  reformulée a changé de sens). L'historique est envoyé par le client : l'API ne stocke rien.
+- **Compléments (expérimental)** : le NLI vérifie qu'un complément découle d'un passage, pas
+  qu'il est utile ; des platitudes ancrées passent encore. Pas encore de jeu d'évaluation dédié
+  (mises en garde attendues par question). Ajoute 5 à 10 s par question.
 - **`docker run -v` sous Git Bash (Windows)** : la conversion de chemins MSYS corrompt les
   volumes passés en ligne de commande ; utiliser `docker compose up`.
 
@@ -310,17 +322,26 @@ assistant-rag/
 │   └── embeddings.py            # embeddings multilingues + reranker
 ├── retrieval/vector_store.py    # ChromaDB + reranking + métadonnées d'index
 ├── rag_chain/
-│   ├── chain.py                 # prompt unique, génération
-│   └── checks.py                # vérifications déterministes (éval et récompense)
-├── api/main.py                  # FastAPI
+│   ├── chain.py                 # prompt unique, mémoire de conversation, génération
+│   ├── checks.py                # vérifications déterministes (éval et récompense)
+│   ├── complements.py           # compléments : mises en garde vérifiées (expérimental)
+│   ├── nli.py                   # ancrage par NLI (récompense DPO et compléments)
+│   └── tracing.py               # traçage Langfuse optionnel
+├── api/
+│   ├── main.py                  # FastAPI
+│   └── static/index.html        # interface web de test
 ├── evaluation/
 │   ├── eval_dataset.json        # 85 questions avec preuves
+│   ├── conversations.json       # 18 relances rattachées au jeu d'évaluation
 │   ├── dataset.py               # validation contre le corpus
 │   ├── metrics.py               # métriques déterministes, bootstrap
 │   ├── run_eval.py              # boucle d'évaluation + MLflow
+│   ├── run_conversation_eval.py # recherche sur les relances : brute, reformulée, complète
 │   ├── compare_runs.py          # comparaison appariée
 │   └── results/                 # un dossier par run (v1/ : archives)
 ├── training/                    # pipeline DPO (voir training/README.md)
+├── langfuse/                    # serveur Langfuse local (docker compose) + génération des secrets
+├── docs/                        # documentation-cours du projet (PDF)
 ├── tests/                       # tests unitaires (sans modèle ni GPU) + smoke test DPO
 ├── .github/workflows/           # CI/CD
 ├── Dockerfile, docker-compose.yml
@@ -328,4 +349,4 @@ assistant-rag/
 ```
 
 Non versionnés : `venv/`, `chroma_db/`, `ingestion/chunks.json`, `mlruns.db`, `.env`,
-`training/data/`, `training/outputs/`.
+`langfuse/.env`, `training/data/`, `training/outputs/`.
