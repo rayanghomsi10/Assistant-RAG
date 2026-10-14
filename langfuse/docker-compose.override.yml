@@ -1,0 +1,23 @@
+# Ajustements locaux au docker-compose.yml officiel de Langfuse (laissé tel quel pour pouvoir
+# le mettre à jour) ; Docker Compose fusionne automatiquement ce fichier avec lui.
+#
+# - Pas de redémarrage automatique : les 6 conteneurs ne tournent que lorsqu'on les lance
+#   (`docker compose up -d` dans ce dossier), pour ne pas occuper la machine en permanence.
+# - Les comptes créés depuis l'interface rejoignent l'organisation initialisée par .env, qui
+#   contient déjà le projet et les clés d'API utilisés par le pipeline RAG.
+services:
+  langfuse-web:
+    restart: "no"
+    environment:
+      LANGFUSE_DEFAULT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-}
+      LANGFUSE_DEFAULT_ORG_ROLE: OWNER
+  langfuse-worker:
+    restart: "no"
+  clickhouse:
+    restart: "no"
+  minio:
+    restart: "no"
+  redis:
+    restart: "no"
+  postgres:
+    restart: "no"
