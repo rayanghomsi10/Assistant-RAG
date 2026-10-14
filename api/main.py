@@ -37,7 +37,8 @@ async def lifespan(_: FastAPI):
         ensure_index_ready()
     except IndexNotReadyError as exc:
         log.warning("Index non prêt : %s", exc)
-    log.info("Traçage Langfuse %s", "actif" if LANGFUSE_ENABLED else "désactivé (pas de clés)")
+    log.info("Traçage Langfuse %s", "actif" if tracing.is_active()
+             else "désactivé (serveur injoignable)" if LANGFUSE_ENABLED else "désactivé (pas de clés)")
     yield
     tracing.flush()
 
@@ -58,9 +59,27 @@ app.add_middleware(
 )
 
 
+class Turn(BaseModel):
+    question: str = Field(..., max_length=4000)
+    answer: str = Field(..., max_length=20000)
+
+
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="La question à poser au corpus")
     top_k: int = Field(default=TOP_K, ge=1, le=20, description="Nombre de chunks transmis au LLM")
+    history: list[Turn] = Field(default_factory=list, max_length=50,
+                                description="Échanges précédents de la conversation, du plus ancien au plus récent")
+    conversation_id: str | None = Field(default=None, max_length=100,
+                                        description="Identifiant de conversation (session Langfuse)")
+    complements: bool = Field(default=False, description="Chercher des mises en garde et informations utiles")
+
+
+class Complement(BaseModel):
+    type: str = Field(description="mise_en_garde, alternative ou a_savoir")
+    label: str
+    text: str
+    source: str
+    section: str = ""
 
 
 class Passage(BaseModel):
@@ -74,7 +93,9 @@ class Passage(BaseModel):
 
 class QueryResponse(BaseModel):
     question: str
+    standalone_question: str | None = Field(default=None, description="Question reformulée pour la recherche")
     answer: str
+    complements: list[Complement] = Field(default_factory=list)
     refused: bool = Field(description="Le système a répondu qu'il ne trouvait pas l'information")
     refused_by_threshold: bool = Field(default=False, description="Refus décidé par le seuil, sans appel au LLM")
     cited_sources: list[str] = Field(description="Documents cités dans la réponse")
@@ -99,7 +120,7 @@ def health():
     except IndexNotReadyError:
         index_ok = False
     return {"status": "ok" if index_ok else "degraded", "index_ready": index_ok, "model": OLLAMA_LLM_MODEL,
-            "tracing": LANGFUSE_ENABLED}
+            "tracing": tracing.is_active()}
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -109,8 +130,10 @@ def query(request: QueryRequest):
 
     start = time.time()
     try:
-        with tracing.attributes(tags=["api"]):
-            result = answer_question(request.question, k=request.top_k)
+        with tracing.attributes(tags=["api"], session_id=request.conversation_id):
+            result = answer_question(request.question, k=request.top_k,
+                                     history=[t.model_dump() for t in request.history],
+                                     complements=request.complements)
     except IndexNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ConnectionError as exc:
@@ -127,7 +150,9 @@ def query(request: QueryRequest):
                 for h, text in zip(result.get("hits", []), result.get("contexts", []), strict=False)]
     return QueryResponse(
         question=result["question"],
+        standalone_question=result.get("standalone_question"),
         answer=result["answer"],
+        complements=[Complement(**c) for c in result.get("complements", [])],
         refused=result["refused"],
         refused_by_threshold=result.get("refused_by_threshold", False),
         cited_sources=result["cited_sources"],

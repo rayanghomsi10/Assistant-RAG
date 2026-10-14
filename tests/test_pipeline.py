@@ -73,12 +73,21 @@ def test_api_query(monkeypatch):
     from api import main as api_main
     monkeypatch.setattr(api_main, "index_is_stale", lambda: False)
     monkeypatch.setattr(api_main, "ensure_index_ready", lambda: None)
-    monkeypatch.setattr(api_main, "answer_question", lambda q, k: {
-        "question": q, "answer": "Avec `xcom_push` [airflow_04_xcoms.md].", "refused": False,
-        "cited_sources": ["airflow_04_xcoms.md"], "retrieved_sources": ["airflow_04_xcoms.md", "dbt_03_tests.md"],
-        "model": "m", "contexts": ["Push XComs...", "Data tests..."],
-        "hits": [{"source": "airflow_04_xcoms.md", "section": "XComs", "score": 9.1, "similarity": 0.87},
-                 {"source": "dbt_03_tests.md", "section": "Tests", "score": -2.0, "similarity": 0.80}]})
+    calls = []
+
+    def fake_answer(q, k, history=None, complements=False):
+        calls.append({"history": history, "complements": complements})
+        return {
+            "question": q, "standalone_question": q, "answer": "Avec `xcom_push` [airflow_04_xcoms.md].",
+            "refused": False, "cited_sources": ["airflow_04_xcoms.md"],
+            "retrieved_sources": ["airflow_04_xcoms.md", "dbt_03_tests.md"],
+            "model": "m", "contexts": ["Push XComs...", "Data tests..."],
+            "hits": [{"source": "airflow_04_xcoms.md", "section": "XComs", "score": 9.1, "similarity": 0.87},
+                     {"source": "dbt_03_tests.md", "section": "Tests", "score": -2.0, "similarity": 0.80}],
+            "complements": [{"type": "mise_en_garde", "label": "Mise en garde", "text": "Pas de gros volumes.",
+                             "source": "airflow_04_xcoms.md", "section": "XComs"}] if complements else []}
+
+    monkeypatch.setattr(api_main, "answer_question", fake_answer)
     with TestClient(api_main.app) as client:
         assert client.get("/health").json()["index_ready"] is True
         r = client.post("/query", json={"question": "Comment pousser un XCom ?"})
@@ -87,5 +96,10 @@ def test_api_query(monkeypatch):
         assert [(p["source"], p["cited"], p["text"]) for p in r.json()["passages"]] == [
             ("airflow_04_xcoms.md", True, "Push XComs..."), ("dbt_03_tests.md", False, "Data tests...")]
         assert client.post("/query", json={"question": ""}).status_code == 422
+        assert calls[-1] == {"history": [], "complements": False} and r.json()["complements"] == []
+        r = client.post("/query", json={"question": "Et pour les gros volumes ?", "complements": True,
+                                        "history": [{"question": "Q1", "answer": "R1"}], "conversation_id": "c1"})
+        assert calls[-1] == {"history": [{"question": "Q1", "answer": "R1"}], "complements": True}
+        assert r.json()["complements"][0]["type"] == "mise_en_garde"
         page = client.get("/")
         assert page.status_code == 200 and "text/html" in page.headers["content-type"]

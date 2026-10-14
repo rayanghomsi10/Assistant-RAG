@@ -111,6 +111,31 @@ python evaluation/compare_runs.py baseline_v2 autre_run      # comparaison appar
 mlflow ui --backend-store-uri sqlite:///mlruns.db            # http://127.0.0.1:5000
 ```
 
+### Conversation et compléments
+
+L'API accepte l'historique de la conversation (`history`, une liste de `{question, answer}`) ;
+l'interface web le gère et propose « Nouvelle conversation ».
+
+- **Mémoire** : une relance elliptique (« et pour les vues ? ») est d'abord reformulée en
+  question autonome, qui sert à la recherche ; la réponse est générée en voyant les
+  `HISTORY_MAX_TURNS` derniers échanges. Sans historique, le prompt est strictement celui de
+  l'évaluation et du DPO. Mesure : `python evaluation/run_conversation_eval.py` compare, sur 18
+  relances de `evaluation/conversations.json`, la recherche avec la relance brute, reformulée,
+  et avec la question complète (plafond).
+- **Compléments (expérimental)** : avec `complements: true`, une recherche dédiée aux mises en
+  garde et bonnes pratiques, puis un appel au LLM, proposent au plus 3 compléments (mise en
+  garde, autre façon de faire, à savoir). Seuls ceux qui citent un passage de cette recherche,
+  sans citation ni identifiant de code inventés, et dont le NLI juge qu'ils en découlent, sont
+  affichés. Le NLI vérifie l'ancrage, pas l'utilité : des platitudes ancrées passent encore.
+
+| Recherche sur 18 relances | brute | reformulée | question complète |
+|---|---|---|---|
+| `evidence_hit` | 0,444 | 0,778 | 1,000 |
+| `mrr` | 0,389 | 0,671 | 0,866 |
+
+L'écart reformulée − brute est significatif (bootstrap apparié) ; 18 relances restent un petit
+échantillon.
+
 ### Observabilité (Langfuse, optionnelle)
 
 Avec des clés `LANGFUSE_PUBLIC_KEY` et `LANGFUSE_SECRET_KEY` dans `.env` (Langfuse Cloud ou
