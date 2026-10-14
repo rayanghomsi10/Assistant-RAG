@@ -98,6 +98,14 @@ def current_trace_id() -> str | None:
     return get_client().get_current_trace_id()
 
 
+def trace_url(trace_id: str | None) -> str | None:
+    """Lien vers la trace dans l'interface Langfuse."""
+    if not (LANGFUSE_ENABLED and trace_id):
+        return None
+    from langfuse import get_client
+    return get_client().get_trace_url(trace_id=trace_id)
+
+
 def flush() -> None:
     """Envoie les données en attente : à appeler à la fin d'un script de courte durée."""
     if LANGFUSE_ENABLED:

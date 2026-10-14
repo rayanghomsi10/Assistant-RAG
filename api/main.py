@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,6 +22,7 @@ from rag_chain.chain import answer_question
 from retrieval.vector_store import IndexNotReadyError, ensure_index_ready, index_chunks, index_is_stale
 
 log = logging.getLogger("uvicorn.error")
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -61,14 +63,32 @@ class QueryRequest(BaseModel):
     top_k: int = Field(default=TOP_K, ge=1, le=20, description="Nombre de chunks transmis au LLM")
 
 
+class Passage(BaseModel):
+    source: str
+    section: str = ""
+    score: float | None = Field(default=None, description="Critère de tri : score du reranker, sinon cosinus")
+    similarity: float | None = Field(default=None, description="Similarité cosinus de la recherche vectorielle")
+    text: str
+    cited: bool = Field(description="Le document de ce passage est cité dans la réponse")
+
+
 class QueryResponse(BaseModel):
     question: str
     answer: str
     refused: bool = Field(description="Le système a répondu qu'il ne trouvait pas l'information")
+    refused_by_threshold: bool = Field(default=False, description="Refus décidé par le seuil, sans appel au LLM")
     cited_sources: list[str] = Field(description="Documents cités dans la réponse")
     retrieved_sources: list[str] = Field(description="Documents dont des passages ont été fournis au LLM")
+    passages: list[Passage] = Field(default_factory=list, description="Passages fournis au LLM, dans l'ordre")
     model: str
     latency_seconds: float
+    trace_url: str | None = Field(default=None, description="Trace Langfuse de la requête, si le traçage est actif")
+
+
+@app.get("/", include_in_schema=False)
+def ui():
+    """Interface web de test (api/static/index.html)."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
@@ -78,7 +98,8 @@ def health():
         index_ok = True
     except IndexNotReadyError:
         index_ok = False
-    return {"status": "ok" if index_ok else "degraded", "index_ready": index_ok, "model": OLLAMA_LLM_MODEL}
+    return {"status": "ok" if index_ok else "degraded", "index_ready": index_ok, "model": OLLAMA_LLM_MODEL,
+            "tracing": LANGFUSE_ENABLED}
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -100,12 +121,19 @@ def query(request: QueryRequest):
     except Exception as exc:  # timeout du modèle, erreur d'inférence, etc.
         raise HTTPException(status_code=500, detail=f"Erreur lors de la génération : {exc}") from exc
 
+    cited = set(result["cited_sources"])
+    passages = [Passage(source=h["source"], section=h.get("section", ""), score=h.get("score"),
+                        similarity=h.get("similarity"), text=text, cited=h["source"] in cited)
+                for h, text in zip(result.get("hits", []), result.get("contexts", []), strict=False)]
     return QueryResponse(
         question=result["question"],
         answer=result["answer"],
         refused=result["refused"],
+        refused_by_threshold=result.get("refused_by_threshold", False),
         cited_sources=result["cited_sources"],
         retrieved_sources=result["retrieved_sources"],
+        passages=passages,
         model=result["model"],
         latency_seconds=round(time.time() - start, 2),
+        trace_url=tracing.trace_url(result.get("trace_id")),
     )
