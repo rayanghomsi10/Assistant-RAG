@@ -27,6 +27,9 @@ datasets==5.0.1
 # --- Suivi d'expérimentations ---
 mlflow==3.16.0
 
+# --- Observabilité (optionnelle : inactive sans clés LANGFUSE_* dans .env) ---
+langfuse==5.0.1
+
 # --- Ingestion / utilitaires ---
 pypdf==6.18.1
 requests==2.34.2

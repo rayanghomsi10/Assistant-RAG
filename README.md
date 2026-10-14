@@ -111,6 +111,37 @@ python evaluation/compare_runs.py baseline_v2 autre_run      # comparaison appar
 mlflow ui --backend-store-uri sqlite:///mlruns.db            # http://127.0.0.1:5000
 ```
 
+### Observabilité (Langfuse, optionnelle)
+
+Avec des clés `LANGFUSE_PUBLIC_KEY` et `LANGFUSE_SECRET_KEY` dans `.env` (Langfuse Cloud ou
+auto-hébergé, voir `.env.example`), chaque question produit une trace : la recherche (passages,
+scores du reranker), l'appel au LLM (prompt exact, réponse, latence, tokens) et le résultat.
+
+Serveur local (Docker, 6 conteneurs : Langfuse web et worker, Postgres, ClickHouse, Redis, MinIO) :
+
+```bash
+python langfuse/init_env.py      # une fois : secrets, organisation, projet et clés d'API
+cd langfuse && docker compose up -d
+python -m rag_chain.tracing      # vérifie la connexion et envoie une trace de test
+```
+
+`init_env.py` affiche les clés à reporter dans le `.env` du projet, avec
+`LANGFUSE_BASE_URL=http://localhost:3000`. Interface : http://localhost:3000 ; le premier compte
+créé avec « Sign up » rejoint l'organisation qui contient le projet. Les conteneurs ne redémarrent
+pas seuls (`docker-compose.override.yml`) : `docker compose stop` libère la mémoire, les données
+sont conservées dans les volumes Docker.
+
+| Origine | Trace | Regroupement |
+|---|---|---|
+| API `POST /query` | `question-rag`, étiquette `api` | — |
+| `run_eval.py` | `eval:<id>`, métriques déterministes et Ragas attachées comme scores | session = nom du run |
+| `build_preferences.py` | `dpo:<id>`, récompenses de la paire comme scores | session `dpo-preferences-<date>` |
+
+Dans Langfuse, on peut ainsi filtrer les questions d'un run dont `faithfulness` est basse ou
+`cites_expected_source` vaut 0, et lire directement le prompt et les passages reçus par le
+modèle. Sans clés, le traçage est inactif et `langfuse` n'est pas importé ;
+`LANGFUSE_TRACING_ENABLED=false` le coupe sans retirer les clés.
+
 Exemple d'appel API :
 ```bash
 curl -X POST http://127.0.0.1:8000/query -H "Content-Type: application/json" \

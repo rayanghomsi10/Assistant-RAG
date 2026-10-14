@@ -24,6 +24,11 @@ services:
       - RERANKER_MODEL_NAME=${RERANKER_MODEL_NAME-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
       - RELEVANCE_THRESHOLD=${RELEVANCE_THRESHOLD:-}
       - CHROMA_PERSIST_DIR=/app/chroma_db
+      # Traçage Langfuse, inactif si les clés sont vides. Un Langfuse auto-hébergé sur l'hôte
+      # se joint depuis le conteneur via host.docker.internal, pas localhost.
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL_DOCKER:-${LANGFUSE_BASE_URL:-https://cloud.langfuse.com}}
     volumes:
       # chunks.json est copié dans l'image au build ; si ./chroma_db est vide, l'API indexe les
       # chunks au démarrage. Après un nouveau chunking : `docker compose up -d --build`.

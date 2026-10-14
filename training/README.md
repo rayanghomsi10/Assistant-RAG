@@ -34,6 +34,15 @@ Une réponse greedy + 4 échantillonnées (température 0,8) par question, noté
 `reward.py`. Compter quelques heures pour ~400 questions sur un GPU de 8 Go ; `--limit 20`
 pour un essai, `--no-nli` pour aller plus vite (sans la composante de grounding).
 
+Le modèle NLI de la récompense doit tourner sur le GPU : le script affiche `Modèle NLI sur
+cuda` au démarrage. Avec un PyTorch installé sans CUDA, il tourne sur le CPU et devient le
+goulot (environ 45 s par réponse au lieu de 1 s sur une RTX 4060). Installer alors la roue CUDA
+de PyTorch adaptée au pilote (sélecteur sur pytorch.org).
+
+Le script enregistre sa progression (`preferences_progress.jsonl`) : relancé après une
+interruption (mise en veille, redémarrage), il reprend là où il s'était arrêté. `--restart`
+repart de zéro ; il est exigé si les paramètres ou les questions ont changé.
+
 `training/data/preferences_stats.json` résume la récolte :
 - `skipped_source_not_retrieved` : questions écartées car le chunk source n'a pas été récupéré
   (le retrieval rate le passage ; ce n'est pas au générateur de corriger ça) ;

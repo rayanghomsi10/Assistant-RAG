@@ -72,6 +72,13 @@ RELEVANCE_THRESHOLD = _optional_float("RELEVANCE_THRESHOLD")
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{ROOT_DIR / 'mlruns.db'}")
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "rag-genai-eval")
 
+# --- Observabilité (Langfuse, optionnelle) ---
+# Le SDK Langfuse lit lui-même LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY et LANGFUSE_BASE_URL
+# (chargées depuis .env par load_dotenv ci-dessus). Sans clés, le traçage est désactivé ;
+# LANGFUSE_TRACING_ENABLED=false le coupe sans retirer les clés (run DPO de plusieurs heures...).
+LANGFUSE_ENABLED = (bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
+                    and os.getenv("LANGFUSE_TRACING_ENABLED", "true").strip().lower() != "false")
+
 # --- Entraînement (DPO) ---
 TRAINING_DIR = ROOT_DIR / "training"
 TRAINING_DATA_DIR = TRAINING_DIR / "data"

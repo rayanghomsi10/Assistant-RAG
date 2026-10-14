@@ -32,6 +32,7 @@ from config import (
 )
 from ingestion.chunking import load_chunks
 from ingestion.embeddings import count_truncated, embed_passages, embed_query, rerank_scores
+from rag_chain import tracing
 
 INDEX_META_PREFIX = "index_"
 
@@ -140,6 +141,7 @@ def index_is_stale(chunks_path: Path = CHUNKS_PATH) -> bool:
     return False
 
 
+@tracing.observe("recherche", as_type="retriever")
 def search(query: str, k: int = TOP_K, candidates: int = RETRIEVAL_CANDIDATES,
            rerank: bool = True) -> list[dict]:
     """Recherche vectorielle puis reranking. Retourne les k meilleurs chunks, triés.
