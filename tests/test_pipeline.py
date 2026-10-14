@@ -75,10 +75,17 @@ def test_api_query(monkeypatch):
     monkeypatch.setattr(api_main, "ensure_index_ready", lambda: None)
     monkeypatch.setattr(api_main, "answer_question", lambda q, k: {
         "question": q, "answer": "Avec `xcom_push` [airflow_04_xcoms.md].", "refused": False,
-        "cited_sources": ["airflow_04_xcoms.md"], "retrieved_sources": ["airflow_04_xcoms.md"], "model": "m"})
+        "cited_sources": ["airflow_04_xcoms.md"], "retrieved_sources": ["airflow_04_xcoms.md", "dbt_03_tests.md"],
+        "model": "m", "contexts": ["Push XComs...", "Data tests..."],
+        "hits": [{"source": "airflow_04_xcoms.md", "section": "XComs", "score": 9.1, "similarity": 0.87},
+                 {"source": "dbt_03_tests.md", "section": "Tests", "score": -2.0, "similarity": 0.80}]})
     with TestClient(api_main.app) as client:
         assert client.get("/health").json()["index_ready"] is True
         r = client.post("/query", json={"question": "Comment pousser un XCom ?"})
         assert r.status_code == 200
         assert r.json()["cited_sources"] == ["airflow_04_xcoms.md"]
+        assert [(p["source"], p["cited"], p["text"]) for p in r.json()["passages"]] == [
+            ("airflow_04_xcoms.md", True, "Push XComs..."), ("dbt_03_tests.md", False, "Data tests...")]
         assert client.post("/query", json={"question": ""}).status_code == 422
+        page = client.get("/")
+        assert page.status_code == 200 and "text/html" in page.headers["content-type"]

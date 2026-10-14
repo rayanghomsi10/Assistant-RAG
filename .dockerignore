@@ -14,3 +14,6 @@ training/
 tests/
 .pytest_cache/
 .ruff_cache/
+# Serveur Langfuse local (contient des secrets) et documentation : inutiles dans l'image de l'API
+langfuse/
+docs/

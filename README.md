@@ -101,7 +101,7 @@ python retrieval/vector_store.py
 # 3. Chaîne RAG complète en ligne de commande
 python rag_chain/chain.py
 
-# 4. API (Swagger : http://127.0.0.1:8000/docs)
+# 4. API + interface de test (http://127.0.0.1:8000 ; Swagger : http://127.0.0.1:8000/docs)
 uvicorn api.main:app --reload --port 8000
 
 # 5. Évaluation

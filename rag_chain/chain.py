@@ -120,6 +120,7 @@ def answer_question(question: str, k: int = TOP_K, model: str = OLLAMA_LLM_MODEL
         "hits": [{k_: h[k_] for k_ in ("id", "source", "section", "similarity", "rerank_score", "score")}
                  for h in hits],
         "model": model,
+        "trace_id": tracing.current_trace_id(),
     }
 
 
