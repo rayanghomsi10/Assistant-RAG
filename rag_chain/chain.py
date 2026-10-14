@@ -21,6 +21,7 @@ from langchain_ollama import ChatOllama
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import OLLAMA_BASE_URL, OLLAMA_LLM_MODEL, OLLAMA_NUM_CTX, RELEVANCE_THRESHOLD, TOP_K
+from rag_chain import tracing
 from rag_chain.checks import REFUSAL_MESSAGE, cited_documents, is_refusal
 from retrieval.vector_store import search
 
@@ -84,13 +85,15 @@ def retrieve(question: str, k: int = TOP_K) -> list[dict]:
 def generate(question: str, hits: list[dict], model: str = OLLAMA_LLM_MODEL,
              temperature: float = 0.0, seed: int | None = None) -> str:
     chain = build_chain(model, temperature, seed)
-    return chain.invoke({"context": format_context(hits), "question": question})
+    return chain.invoke({"context": format_context(hits), "question": question},
+                        config=tracing.langchain_config("génération"))
 
 
 def below_threshold(hits: list[dict], threshold: float | None = RELEVANCE_THRESHOLD) -> bool:
     return threshold is not None and (not hits or hits[0]["score"] < threshold)
 
 
+@tracing.observe("question-rag", as_type="chain")
 def answer_question(question: str, k: int = TOP_K, model: str = OLLAMA_LLM_MODEL,
                     temperature: float = 0.0) -> dict:
     """Point d'entrée principal : question -> réponse générée + sources."""

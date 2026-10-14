@@ -14,3 +14,5 @@ training/data/
 training/outputs/
 *.log
 .pytest_cache/
+# Secrets du serveur Langfuse local (python langfuse/init_env.py)
+langfuse/.env

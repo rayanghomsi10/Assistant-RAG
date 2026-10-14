@@ -15,7 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import CHUNKS_PATH, OLLAMA_LLM_MODEL, TOP_K
+from config import CHUNKS_PATH, LANGFUSE_ENABLED, OLLAMA_LLM_MODEL, TOP_K
+from rag_chain import tracing
 from rag_chain.chain import answer_question
 from retrieval.vector_store import IndexNotReadyError, ensure_index_ready, index_chunks, index_is_stale
 
@@ -34,7 +35,9 @@ async def lifespan(_: FastAPI):
         ensure_index_ready()
     except IndexNotReadyError as exc:
         log.warning("Index non prêt : %s", exc)
+    log.info("Traçage Langfuse %s", "actif" if LANGFUSE_ENABLED else "désactivé (pas de clés)")
     yield
+    tracing.flush()
 
 
 app = FastAPI(
@@ -85,7 +88,8 @@ def query(request: QueryRequest):
 
     start = time.time()
     try:
-        result = answer_question(request.question, k=request.top_k)
+        with tracing.attributes(tags=["api"]):
+            result = answer_question(request.question, k=request.top_k)
     except IndexNotReadyError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ConnectionError as exc:

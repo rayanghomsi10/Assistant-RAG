@@ -60,6 +60,7 @@ from evaluation.metrics import (
     retrieval_metrics,
     suggest_threshold,
 )
+from rag_chain import tracing
 from rag_chain.chain import below_threshold, generate
 from rag_chain.checks import REFUSAL_MESSAGE
 from retrieval.vector_store import get_index_metadata, search
@@ -75,28 +76,37 @@ def safe_name(run_name: str | None) -> str:
 # Exécution
 # ---------------------------------------------------------------------------------------------
 
-def run_pipeline(items: list[dict], model: str, repeats: int, retrieval_only: bool) -> pd.DataFrame:
+def run_pipeline(items: list[dict], model: str, repeats: int, retrieval_only: bool,
+                 run_name: str | None = None) -> pd.DataFrame:
     hits_cache = {}  # le retrieval est déterministe : inutile de le refaire à chaque répétition
     rows = []
     for rep in range(repeats if not retrieval_only else 1):
         for n, it in enumerate(items, 1):
-            if it["id"] not in hits_cache:
-                hits_cache[it["id"]] = search(it["question"])
-            hits = hits_cache[it["id"]]
-            row = {"id": it["id"], "type": it["type"], "question": it["question"], "repeat": rep,
-                   "top_score": hits[0]["score"] if hits else np.nan,
-                   "retrieved_ids": " ".join(h["id"] for h in hits)}
-            if it["type"] == "in_scope":
-                row.update(retrieval_metrics(it, hits))
-            if not retrieval_only:
-                print(f"  [rep {rep + 1}/{repeats}] [{n}/{len(items)}] {it['question']}")
-                start = time.time()
-                gated = below_threshold(hits)
-                answer = REFUSAL_MESSAGE if gated else generate(it["question"], hits, model=model)
-                row.update({"answer": answer, "refused_by_threshold": gated,
-                            "latency_s": round(time.time() - start, 2),
-                            "contexts": json.dumps([h["text"] for h in hits], ensure_ascii=False)})
-                row.update(generation_metrics(it, answer, hits, row.get("evidence_hit")))
+            # Une trace Langfuse par question et par répétition, regroupées par run (session) ;
+            # les métriques y sont attachées comme scores (sans effet si Langfuse est inactif).
+            with tracing.trace(f"eval:{it['id']}", session_id=run_name, tags=["evaluation", it["type"]],
+                               metadata={"id": it["id"], "repeat": rep, "model": model}, input=it["question"]):
+                if it["id"] not in hits_cache:
+                    hits_cache[it["id"]] = search(it["question"])
+                hits = hits_cache[it["id"]]
+                row = {"id": it["id"], "type": it["type"], "question": it["question"], "repeat": rep,
+                       "top_score": hits[0]["score"] if hits else np.nan,
+                       "retrieved_ids": " ".join(h["id"] for h in hits)}
+                if it["type"] == "in_scope":
+                    row.update(retrieval_metrics(it, hits))
+                if not retrieval_only:
+                    print(f"  [rep {rep + 1}/{repeats}] [{n}/{len(items)}] {it['question']}")
+                    start = time.time()
+                    gated = below_threshold(hits)
+                    answer = REFUSAL_MESSAGE if gated else generate(it["question"], hits, model=model)
+                    row.update({"answer": answer, "refused_by_threshold": gated,
+                                "latency_s": round(time.time() - start, 2),
+                                "contexts": json.dumps([h["text"] for h in hits], ensure_ascii=False)})
+                    row.update(generation_metrics(it, answer, hits, row.get("evidence_hit")))
+                    tracing.set_output(answer)
+                for m in RETRIEVAL_METRICS + IN_SCOPE_GEN_METRICS + OUT_OF_SCOPE_METRICS:
+                    tracing.score(m, row.get(m))
+                row["trace_id"] = tracing.current_trace_id()
             rows.append(row)
     return pd.DataFrame(rows)
 
@@ -232,15 +242,20 @@ def main(argv=None) -> dict:
     print(f"{len(items)} questions ({n_in} dans le périmètre, {len(items) - n_in} hors périmètre), "
           f"générateur = {args.model}\n")
 
-    df = run_pipeline(items, args.model, args.repeats, args.retrieval_only)
+    run = safe_name(args.run_name)
+    df = run_pipeline(items, args.model, args.repeats, args.retrieval_only, run_name=run)
     if not (args.retrieval_only or args.skip_ragas):
         df = run_ragas(df, items_by_id)
+        # Les scores Ragas arrivent après coup : on les rattache aux traces de chaque question.
+        for r in df.itertuples():
+            for m in RAGAS_METRICS:
+                tracing.score_trace(r.trace_id, m, getattr(r, m))
+    tracing.flush()
 
     summary = summarize(df)
     print_summary(summary)
     threshold_info = retrieval_report(df)
 
-    run = safe_name(args.run_name)
     out_dir = RESULTS_DIR / run
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path, summary_path = out_dir / "per_question.csv", out_dir / "summary.json"
