@@ -37,7 +37,14 @@ pour un essai, `--no-nli` pour aller plus vite (sans la composante de grounding)
 Le modèle NLI de la récompense doit tourner sur le GPU : le script affiche `Modèle NLI sur
 cuda` au démarrage. Avec un PyTorch installé sans CUDA, il tourne sur le CPU et devient le
 goulot (environ 45 s par réponse au lieu de 1 s sur une RTX 4060). Installer alors la roue CUDA
-de PyTorch adaptée au pilote (sélecteur sur pytorch.org).
+de PyTorch adaptée au pilote (sélecteur sur pytorch.org). Vérification avant de lancer, venv
+activé (sinon `python` peut désigner une autre installation, sans CUDA) :
+
+```bash
+python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   # doit finir par True
+```
+
+Pendant le run, `nvidia-smi` doit lister un processus `python` à côté d'Ollama.
 
 Le script enregistre sa progression (`preferences_progress.jsonl`) : relancé après une
 interruption (mise en veille, redémarrage), il reprend là où il s'était arrêté. `--restart`
