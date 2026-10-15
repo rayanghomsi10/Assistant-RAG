@@ -66,6 +66,17 @@ RERANKER_MODEL_NAME = os.getenv("RERANKER_MODEL_NAME", "cross-encoder/mmarco-mMi
 # `python evaluation/run_eval.py --retrieval-only` (distributions dans/hors périmètre).
 RELEVANCE_THRESHOLD = _optional_float("RELEVANCE_THRESHOLD")
 
+# --- Conversation ---
+# Nombre d'échanges précédents transmis au LLM (et à la reformulation des relances). Chaque échange
+# consomme de la fenêtre de contexte (num_ctx), à côté des passages récupérés.
+HISTORY_MAX_TURNS = int(os.getenv("HISTORY_MAX_TURNS", "3"))
+# Compléments (mises en garde, alternatives) : nombre maximal affiché, et score minimal du reranker
+# pour qu'un passage de mise en garde soit jugé lié à la question.
+COMPLEMENTS_MAX = int(os.getenv("COMPLEMENTS_MAX", "3"))
+COMPLEMENTS_MIN_SCORE = float(os.getenv("COMPLEMENTS_MIN_SCORE", "0"))
+# Probabilité d'implication minimale (NLI, moyenne sur les phrases) pour afficher un complément.
+COMPLEMENTS_MIN_ENTAILMENT = float(os.getenv("COMPLEMENTS_MIN_ENTAILMENT", "0.5"))
+
 # --- MLflow ---
 # NB: MLflow >= 3.x a mis le backend "filesystem" (./mlruns) en mode maintenance et recommande
 # un backend SQLite, même en local (voir https://mlflow.org/docs/latest/self-hosting/migrate-from-file-store).

@@ -76,6 +76,18 @@
   .passage .head b { color: var(--ink); font-weight: 600; }
   .passage .text { white-space: pre-wrap; max-height: 160px; overflow-y: auto; margin-top: 4px;
     font-size: 12.5px; background: var(--code); border-radius: 6px; padding: 8px 10px; }
+  .reform { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+  .complements { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--code); }
+  .complements h3 { margin: 0 0 6px; font-size: 13px; }
+  .complement { margin: 8px 0 0; font-size: 14px; }
+  .complement .tag { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--accent); margin-right: 6px; }
+  .complement .tag.mise_en_garde { color: var(--warn); }
+  .complement .chip { font-size: 11.5px; margin-left: 4px; }
+  header .actions { display: flex; align-items: center; gap: 14px; }
+  header button.new { font: inherit; font-size: 13px; color: var(--ink); background: none;
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+  header button.new:hover { border-color: var(--accent); }
   .error { color: var(--warn); }
   .typing { display: inline-flex; gap: 4px; align-items: center; }
   .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
@@ -108,7 +120,10 @@
     <h1>Assistant dbt & Airflow</h1>
     <p>RAG local · multilingual-e5 + reranker · ChromaDB · Llama 3.1 8B (Ollama)</p>
   </div>
-  <div class="status"><span class="dot" id="dot"></span><span id="status">Vérification…</span></div>
+  <div class="actions">
+    <button type="button" class="new" id="new">Nouvelle conversation</button>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">Vérification…</span></div>
+  </div>
 </header>
 
 <main id="scroll">
@@ -135,6 +150,9 @@
     <div class="opts">
       <label for="k">Passages récupérés : <strong id="kval">4</strong></label>
       <input id="k" type="range" min="1" max="10" value="4">
+      <label title="Recherche dédiée aux mises en garde et bonnes pratiques, vérifiées par NLI. Ajoute quelques secondes.">
+        <input id="comp" type="checkbox" checked> Compléments (expérimental)</label>
+      <span id="mem"></span>
       <span class="hint">Entrée pour envoyer · Maj+Entrée pour aller à la ligne</span>
     </div>
   </form>
@@ -143,6 +161,29 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const thread = $("thread"), scroll = $("scroll"), q = $("q"), send = $("send"), k = $("k");
+const welcomeHtml = thread.innerHTML;
+
+// Mémoire de conversation : l'historique est gardé ici et renvoyé à chaque question ; l'API en
+// transmet les derniers échanges au modèle. L'identifiant regroupe la conversation dans Langfuse.
+let history = [], conversationId = newId();
+
+function newId() {
+  return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+}
+
+function showMemory() {
+  $("mem").textContent = history.length ? "Mémoire : " + history.length + " échange" + (history.length > 1 ? "s" : "") : "";
+}
+
+function resetConversation() {
+  if (send.disabled) return;
+  history = [];
+  conversationId = newId();
+  thread.innerHTML = welcomeHtml;
+  bindExamples();
+  showMemory();
+  q.focus();
+}
 
 function esc(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -206,11 +247,14 @@ async function ask(question) {
     const res = await fetch("/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, top_k: +k.value }),
+      body: JSON.stringify({ question, top_k: +k.value, history, conversation_id: conversationId,
+                             complements: $("comp").checked }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || "Erreur HTTP " + res.status);
     bubble.innerHTML = render(data);
+    history.push({ question, answer: data.answer });
+    showMemory();
   } catch (e) {
     bubble.innerHTML = '<p class="error">' + esc(e.message || "Impossible de joindre l'API.") + "</p>";
   } finally {
@@ -228,10 +272,21 @@ function render(data) {
   const uncited = (data.retrieved_sources || []).filter((s) => !cited.includes(s));
   const chips = (list, cls) => list.map((s) => '<span class="chip ' + cls + '">' + esc(s) + "</span>").join("");
   let html = "";
+  const norm = (s) => (s || "").trim().toLowerCase();
+  if (data.standalone_question && norm(data.standalone_question) !== norm(data.question)) {
+    html += '<div class="reform">Recherche effectuée pour : « ' + esc(data.standalone_question) + " »</div>";
+  }
   if (data.refused) {
     html += '<span class="badge">' + (data.refused_by_threshold ? "Refus par seuil (sans appel au LLM)" : "Refus") + "</span>";
   }
   html += md(data.answer);
+  const comps = data.complements || [];
+  if (comps.length) {
+    html += '<div class="complements"><h3>À savoir aussi</h3>' + comps.map((c) =>
+      '<div class="complement"><span class="tag ' + esc(c.type) + '">' + esc(c.label) + "</span>" +
+      md(c.text).replace(/^<p>|<\/p>$/g, "") + '<span class="chip">' + esc(c.source) + "</span></div>"
+    ).join("") + "</div>";
+  }
   html += '<div class="meta">' +
     (cited.length ? "Citées " + chips(cited, "cited") : "Aucune source citée") +
     (uncited.length ? " · Récupérées, non citées " + chips(uncited, "muted") : "") +
@@ -265,9 +320,13 @@ q.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q.value); }
 });
 k.addEventListener("input", () => { $("kval").textContent = k.value; });
-document.querySelectorAll(".examples button").forEach((btn) =>
-  btn.addEventListener("click", () => ask(btn.dataset.q))
-);
+function bindExamples() {
+  document.querySelectorAll(".examples button").forEach((btn) =>
+    btn.addEventListener("click", () => ask(btn.dataset.q))
+  );
+}
+bindExamples();
+$("new").addEventListener("click", resetConversation);
 
 fetch("/health").then((r) => r.json()).catch(() => null).then((h) => {
   const ok = !!(h && h.index_ready);

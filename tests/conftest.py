@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 from pathlib import Path
@@ -6,6 +7,10 @@ import pytest
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
+
+# Les tests ne dépendent d'aucun serveur Langfuse, même si des clés figurent dans le .env local :
+# défini avant l'import de config (load_dotenv ne remplace pas une variable déjà présente).
+os.environ["LANGFUSE_TRACING_ENABLED"] = "false"
 
 
 @pytest.fixture

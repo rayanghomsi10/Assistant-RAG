@@ -9,17 +9,44 @@ Ce qui est tracé : une trace par question, qu'elle vienne de l'API, de l'évalu
 construction des paires DPO. Elle contient la recherche (passages et scores) et l'appel au LLM
 (prompt exact, réponse, latence, tokens) comme observations imbriquées ; l'évaluation y attache
 ses métriques comme scores, ce qui permet de filtrer dans Langfuse les réponses en échec.
+
+Si le serveur ne répond pas (conteneurs arrêtés, par exemple), le traçage est désactivé pour
+l'exécution en cours, avec un avertissement : sinon chaque lot de traces attendrait l'expiration
+de son envoi, et un run d'évaluation resterait bloqué plusieurs minutes à la fin.
 """
+import logging
 import math
+import os
 from contextlib import contextmanager
 from functools import lru_cache
 
 from config import LANGFUSE_ENABLED
 
+log = logging.getLogger(__name__)
+
+
+def _base_url() -> str:
+    return (os.getenv("LANGFUSE_BASE_URL") or os.getenv("LANGFUSE_HOST") or "https://cloud.langfuse.com").rstrip("/")
+
+
+@lru_cache(maxsize=1)
+def is_active() -> bool:
+    """Clés configurées et serveur joignable (vérifié une fois par exécution)."""
+    if not LANGFUSE_ENABLED:
+        return False
+    import httpx
+    try:
+        ok = httpx.get(f"{_base_url()}/api/public/health", timeout=3).status_code == 200
+    except httpx.HTTPError:
+        ok = False
+    if not ok:
+        log.warning("Langfuse injoignable sur %s : traçage désactivé pour cette exécution.", _base_url())
+    return ok
+
 
 def observe(name: str, as_type: str = "span"):
     """Décorateur : trace la fonction comme une observation (entrées et sortie capturées)."""
-    if not LANGFUSE_ENABLED:
+    if not is_active():
         return lambda func: func
     from langfuse import observe as langfuse_observe
     return langfuse_observe(name=name, as_type=as_type)
@@ -33,7 +60,7 @@ def _langchain_handler():
 
 def langchain_config(run_name: str) -> dict:
     """Configuration d'invocation LangChain qui rattache l'appel au LLM à la trace en cours."""
-    if not LANGFUSE_ENABLED:
+    if not is_active():
         return {"run_name": run_name}
     return {"run_name": run_name, "callbacks": [_langchain_handler()]}
 
@@ -46,7 +73,7 @@ def trace(name: str, *, session_id: str | None = None, tags: list[str] | None = 
     Hors de toute trace, elle devient la racine d'une nouvelle trace, regroupée par session
     (un run d'évaluation, un run DPO) et étiquetée par `tags`.
     """
-    if not LANGFUSE_ENABLED:
+    if not is_active():
         yield
         return
     from langfuse import get_client, propagate_attributes
@@ -58,7 +85,7 @@ def trace(name: str, *, session_id: str | None = None, tags: list[str] | None = 
 @contextmanager
 def attributes(*, session_id: str | None = None, tags: list[str] | None = None):
     """Étiquette les traces créées à l'intérieur (par exemple celles de l'API)."""
-    if not LANGFUSE_ENABLED:
+    if not is_active():
         yield
         return
     from langfuse import propagate_attributes
@@ -68,7 +95,7 @@ def attributes(*, session_id: str | None = None, tags: list[str] | None = None):
 
 def set_output(output=None, metadata: dict | None = None) -> None:
     """Renseigne la sortie et les métadonnées de l'observation en cours."""
-    if LANGFUSE_ENABLED:
+    if is_active():
         from langfuse import get_client
         get_client().update_current_span(output=output, metadata=metadata)
 
@@ -79,20 +106,20 @@ def _valid(value) -> bool:
 
 def score(name: str, value, comment: str | None = None) -> None:
     """Attache un score numérique à la trace en cours (valeurs manquantes ignorées)."""
-    if LANGFUSE_ENABLED and _valid(value):
+    if is_active() and _valid(value):
         from langfuse import get_client
         get_client().score_current_trace(name=name, value=float(value), comment=comment)
 
 
 def score_trace(trace_id: str | None, name: str, value) -> None:
     """Attache un score à une trace déjà terminée (scores Ragas, calculés après coup)."""
-    if LANGFUSE_ENABLED and trace_id and _valid(value):
+    if is_active() and trace_id and _valid(value):
         from langfuse import get_client
         get_client().create_score(trace_id=trace_id, name=name, value=float(value))
 
 
 def current_trace_id() -> str | None:
-    if not LANGFUSE_ENABLED:
+    if not is_active():
         return None
     from langfuse import get_client
     return get_client().get_current_trace_id()
@@ -100,7 +127,7 @@ def current_trace_id() -> str | None:
 
 def trace_url(trace_id: str | None) -> str | None:
     """Lien vers la trace dans l'interface Langfuse."""
-    if not (LANGFUSE_ENABLED and trace_id):
+    if not (trace_id and is_active()):
         return None
     from langfuse import get_client
     return get_client().get_trace_url(trace_id=trace_id)
@@ -108,20 +135,21 @@ def trace_url(trace_id: str | None) -> str | None:
 
 def flush() -> None:
     """Envoie les données en attente : à appeler à la fin d'un script de courte durée."""
-    if LANGFUSE_ENABLED:
+    if is_active():
         from langfuse import get_client
         get_client().flush()
 
 
 if __name__ == "__main__":
     # Vérification de la configuration : python -m rag_chain.tracing
-    import os
     if not LANGFUSE_ENABLED:
         raise SystemExit("Traçage inactif : renseigner LANGFUSE_PUBLIC_KEY et LANGFUSE_SECRET_KEY dans .env "
                          "(et LANGFUSE_TRACING_ENABLED différent de false).")
+    print(f"Serveur : {_base_url()}")
+    if not is_active():
+        raise SystemExit("Serveur injoignable : en local, `docker compose --project-directory langfuse up -d`.")
     from langfuse import get_client
     client = get_client()
-    print(f"Serveur : {os.getenv('LANGFUSE_BASE_URL') or os.getenv('LANGFUSE_HOST') or 'https://cloud.langfuse.com'}")
     if not client.auth_check():
         raise SystemExit("Clés refusées : vérifier les clés et la région (LANGFUSE_BASE_URL).")
     with trace("verification-configuration", tags=["test"], input="ping"):

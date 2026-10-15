@@ -1,0 +1,20 @@
+[
+  {"id": "conv_01", "history": ["dbt_incr_01"], "question": "Et comment je force une reconstruction complète ?", "target": "dbt_incr_04"},
+  {"id": "conv_02", "history": ["dbt_incr_03"], "question": "Pourquoi ses colonnes ne doivent-elles pas contenir de valeurs nulles ?", "target": "dbt_incr_07"},
+  {"id": "conv_03", "history": ["dbt_incr_03"], "question": "Est-ce que la stratégie insert_overwrite s'en sert ?", "target": "dbt_incr_08"},
+  {"id": "conv_04", "history": ["dbt_incr_05"], "question": "Et avec le réglage par défaut, que se passe-t-il si j'ajoute une colonne ?", "target": "dbt_incr_06"},
+  {"id": "conv_05", "history": ["dbt_mat_01"], "question": "Laquelle est utilisée par défaut ?", "target": "dbt_mat_02"},
+  {"id": "conv_06", "history": ["dbt_mat_02"], "question": "Quels sont ses avantages et ses inconvénients ?", "target": "dbt_mat_03"},
+  {"id": "conv_07", "history": ["dbt_mat_01"], "question": "Et les modèles Python, lesquelles supportent-ils ?", "target": "dbt_mat_06"},
+  {"id": "conv_08", "history": ["dbt_jinja_03"], "question": "Et si elle vient d'un package comme dbt-utils, je l'appelle comment ?", "target": "dbt_jinja_06"},
+  {"id": "conv_09", "history": ["dbt_tests_01"], "question": "Comment je les lance sur un seul modèle ?", "target": "dbt_tests_07"},
+  {"id": "conv_10", "history": ["dbt_tests_03"], "question": "Et quand est-ce qu'il est considéré comme réussi ?", "target": "dbt_tests_04"},
+  {"id": "conv_11", "history": ["af_xcom_01"], "question": "Comment j'en pousse une depuis une tâche ?", "target": "af_xcom_02"},
+  {"id": "conv_12", "history": ["af_xcom_02"], "question": "Et pourquoi elles disparaissent quand la tâche est relancée ?", "target": "af_xcom_03"},
+  {"id": "conv_13", "history": ["af_xcom_01"], "question": "Quelle différence avec les Variables ?", "target": "af_xcom_05"},
+  {"id": "conv_14", "history": ["af_ops_01"], "question": "Et avec une Task, c'est quoi la différence ?", "target": "af_ops_02"},
+  {"id": "conv_15", "history": ["af_sched_04"], "question": "Comment évitent-ils d'entrer en même temps dans la section critique ?", "target": "af_sched_05"},
+  {"id": "conv_16", "history": ["af_dags_01"], "question": "Il y a combien de façons d'en déclarer un ?", "target": "af_dags_02"},
+  {"id": "conv_17", "history": ["af_dags_03"], "question": "Pourquoi faut-il l'éviter en aval d'un branchement ?", "target": "af_dags_04"},
+  {"id": "conv_18", "history": ["af_best_02"], "question": "Et pour les Variables, comment ne pas ralentir le parsing ?", "target": "af_best_03"}
+]

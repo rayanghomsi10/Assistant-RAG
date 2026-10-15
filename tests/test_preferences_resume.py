@@ -72,7 +72,7 @@ def test_old_preferences_file_is_not_overwritten(run):
 
 
 def test_tracing_is_a_noop_without_keys(monkeypatch):
-    monkeypatch.setattr(tracing, "LANGFUSE_ENABLED", False)
+    monkeypatch.setattr(tracing, "is_active", lambda: False)
 
     def f(x):
         return x * 2

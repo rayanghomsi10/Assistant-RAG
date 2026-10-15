@@ -24,11 +24,18 @@ Risque connu : aucune composante ne mesure directement si la réponse *répond* 
 D'où la contrainte de longueur minimale, le contrôle de answer_relevancy dans l'évaluation
 (Ragas) et l'inspection manuelle d'un échantillon de paires (voir training/README.md).
 """
-import re
 from dataclasses import asdict, dataclass, field
-from functools import lru_cache
 
 from rag_chain.checks import check_answer
+
+# Modèle NLI et score d'ancrage, partagés avec le filtrage des compléments de l'API.
+from rag_chain.nli import (  # noqa: F401 - réexportés pour les scripts d'entraînement
+    NLI_MODEL_NAME,
+    NliScorer,
+    answer_sentences,
+    get_nli_scorer,
+    grounding_score,
+)
 
 MIN_WORDS = 12
 LENGTH_SOFT_LIMIT = 180
@@ -36,9 +43,6 @@ LENGTH_HARD_LIMIT = 400
 
 WEIGHTS = {"grounding": 0.40, "cites_source": 0.20, "code_support": 0.15,
            "has_citation": 0.10, "concision": 0.15}
-
-NLI_MODEL_NAME = "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7"
-
 
 @dataclass
 class Reward:
@@ -52,54 +56,6 @@ class Reward:
 
     def to_dict(self) -> dict:
         return asdict(self)
-
-
-# ---------------------------------------------------------------------------------------------
-# NLI (optionnel)
-# ---------------------------------------------------------------------------------------------
-
-class NliScorer:
-    """Probabilité d'implication (entailment) d'une hypothèse par une prémisse, multilingue :
-    les réponses sont en français, le contexte en anglais."""
-
-    def __init__(self, model_name: str = NLI_MODEL_NAME, device: str | None = None):
-        import torch
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer
-        self.torch = torch
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name).to(self.device).eval()
-        labels = {v.lower(): int(k) for k, v in self.model.config.id2label.items()}
-        self.entail_idx = labels["entailment"]
-
-    def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
-        with self.torch.no_grad():
-            enc = self.tokenizer(premises, [hypothesis] * len(premises), truncation="only_first",
-                                 max_length=512, padding=True, return_tensors="pt").to(self.device)
-            probs = self.model(**enc).logits.softmax(-1)[:, self.entail_idx]
-        return probs.tolist()
-
-
-@lru_cache(maxsize=1)
-def get_nli_scorer() -> NliScorer:
-    return NliScorer()
-
-
-_SENT_SPLIT = re.compile(r"(?<=[.!?;])\s+|\n+")
-
-
-def answer_sentences(answer: str) -> list[str]:
-    text = re.sub(r"\[[^\]]+\]", "", answer)                      # références [doc.md]
-    sentences = [s.strip(" -*•\t") for s in _SENT_SPLIT.split(text)]
-    return [s for s in sentences if len(s.split()) >= 4]
-
-
-def grounding_score(answer: str, contexts: list[str], nli: NliScorer) -> float:
-    sentences = answer_sentences(answer)
-    if not sentences:
-        return 0.0
-    scores = [max(nli.entailment(contexts, s)) for s in sentences]
-    return sum(scores) / len(scores)
 
 
 # ---------------------------------------------------------------------------------------------
