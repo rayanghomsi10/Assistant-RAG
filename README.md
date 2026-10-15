@@ -253,6 +253,14 @@ amélioration significative sur au moins une métrique visée (`quotes_faithful`
 `false_refusal`, `citations_valid`) **et** aucune dégradation significative de
 `answer_relevancy` ni de `correct_refusal`.
 
+**État (15 octobre 2026)** : étapes 1 et 2 faites. Sur 418 questions, 164 paires, toutes dans le
+périmètre (31 questions écartées faute de passage source, 223 sans écart suffisant ; hors
+périmètre, le modèle refuse toujours de la même façon). Les réponses retenues se distinguent
+surtout par leurs citations (+0,80 sur la citation du document source) bien plus que par
+l'ancrage NLI (+0,22), à longueur comparable. C'est sous le seuil indicatif de 200 paires, et ces
+paires visent surtout `has_citation` et `cites_expected_source`, absentes de la règle de décision :
+la relecture d'un échantillon décide de la suite avant tout entraînement.
+
 ## CI/CD
 
 `.github/workflows/ci-cd.yml` : à chaque push et pull request, lint (ruff), tests unitaires sans
