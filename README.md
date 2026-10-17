@@ -253,13 +253,13 @@ amélioration significative sur au moins une métrique visée (`quotes_faithful`
 `false_refusal`, `citations_valid`) **et** aucune dégradation significative de
 `answer_relevancy` ni de `correct_refusal`.
 
-**État (15 octobre 2026)** : étapes 1 et 2 faites. Sur 418 questions, 164 paires, toutes dans le
-périmètre (31 questions écartées faute de passage source, 223 sans écart suffisant ; hors
-périmètre, le modèle refuse toujours de la même façon). Les réponses retenues se distinguent
-surtout par leurs citations (+0,80 sur la citation du document source) bien plus que par
-l'ancrage NLI (+0,22), à longueur comparable. C'est sous le seuil indicatif de 200 paires, et ces
-paires visent surtout `has_citation` et `cites_expected_source`, absentes de la règle de décision :
-la relecture d'un échantillon décide de la suite avant tout entraînement.
+**État (18 octobre 2026)** : un premier run (418 questions) a donné 164 paires, toutes dans le
+périmètre ; hors périmètre, le modèle refuse toujours de la même façon. Leur relecture a montré
+que la citation suffisait à former une paire : 48 paires sur 164 ne tenaient qu'à elle, et sur 30
+paires relues, 8 retenaient une réponse moins bonne sur le fond. La sélection exige désormais un
+écart sur le fond quand la réponse rejetée respecte les contraintes dures, toutes les réponses
+candidates sont enregistrées (re-sélection sans régénération : `training/select_pairs.py`), et
+les paires sont regénérées à partir de 3 questions par chunk. Détails dans `training/README.md`.
 
 ## CI/CD
 

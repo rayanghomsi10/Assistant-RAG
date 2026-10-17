@@ -17,10 +17,10 @@ confiance collés à 1), l'entraînement n'a rien à gagner : s'arrêter là.
 ## 2. Questions d'entraînement
 
 ```bash
-python training/generate_questions.py --per-chunk 2
+python training/generate_questions.py --per-chunk 3
 ```
 
-Environ 2 questions par chunk + 60 questions hors périmètre, après déduplication et filtre
+Environ 3 questions par chunk + 60 questions hors périmètre, après déduplication et filtre
 anti-fuite (les questions écartées sont affichées). Relire une vingtaine de questions au hasard
 dans `training/data/questions.jsonl` : une question mal posée produit une paire inutile.
 
@@ -31,8 +31,23 @@ python training/build_preferences.py --samples 4
 ```
 
 Une réponse greedy + 4 échantillonnées (température 0,8) par question, notées par
-`reward.py`. Compter quelques heures pour ~400 questions sur un GPU de 8 Go ; `--limit 20`
-pour un essai, `--no-nli` pour aller plus vite (sans la composante de grounding).
+`reward.py`. Compter environ 30 s par question sur une RTX 4060 (quelques heures pour 600
+questions) ; `--limit 20` pour un essai, `--no-nli` pour aller plus vite (sans la composante de
+grounding).
+
+**Règle de sélection.** La paire oppose la meilleure réponse valide à la moins bonne qui laisse
+un écart d'au moins `--min-margin` (0,2). Si cette réponse rejetée ne viole aucune contrainte
+dure, l'écart doit aussi porter sur le fond (ancrage, code, concision) d'au moins
+`--min-substance` (0,1), et pas seulement sur la citation du document. Sans cette condition
+(`--no-substance`, règle du premier run), 48 paires sur 164 ne tenaient qu'à la citation, et la
+relecture de 30 paires en a trouvé 8 où la réponse retenue était moins bonne sur le fond.
+
+Toutes les réponses candidates et leur récompense sont enregistrées dans
+`preferences_candidates.jsonl`. Pour essayer une autre règle sans rien regénérer :
+
+```bash
+python training/select_pairs.py --min-margin 0.2 --min-substance 0.1
+```
 
 Le modèle NLI de la récompense doit tourner sur le GPU : le script affiche `Modèle NLI sur
 cuda` au démarrage. Avec un PyTorch installé sans CUDA, il tourne sur le CPU et devient le
@@ -58,9 +73,14 @@ repart de zéro ; il est exigé si les paramètres ou les questions ont changé.
 - `no_pair` : questions sans écart suffisant entre réponses (le modèle est constant dessus).
 
 **Inspection obligatoire avant d'entraîner** : lire 30 paires au hasard. Vérifier que la
-réponse « chosen » est réellement meilleure, et qu'elle n'est pas systématiquement plus courte
-ou plus évasive que la « rejected » (la récompense ne mesure pas la pertinence). Viser au moins
-200 paires ; en dessous, augmenter `--per-chunk` ou `--samples`.
+réponse « chosen » est réellement meilleure, et qu'elle n'est pas systématiquement plus courte,
+plus évasive ou seulement mieux citée que la « rejected » (la récompense ne mesure pas la
+pertinence). Viser au moins 200 paires ; en dessous, augmenter `--per-chunk` ou `--samples`.
+
+Premier run (15 octobre 2026, questions à 2 par chunk, sans condition sur le fond) : 164 paires,
+conservées dans `training/data/run1_20261015/`. Relecture de 30 paires : 9 où la retenue est
+vraiment meilleure, 13 où seule la citation diffère, 8 où la retenue est moins bonne ou douteuse.
+D'où la condition sur le fond et la régénération à 3 questions par chunk.
 
 ## 4. Pourquoi une récompense vérifiable
 
