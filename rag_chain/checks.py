@@ -30,8 +30,12 @@ _REFUSAL_RE = re.compile("|".join(_REFUSAL_PATTERNS))
 
 # Nom de document du corpus : dbt_01_sql_models(.md), airflow_04_xcoms(.md)…
 _DOC_NAME_RE = re.compile(r"\b((?:dbt|airflow)_\d{2}_[a-z0-9_]+?)(?:\.md|\.pdf)?\b")
-_QUOTE_RE = re.compile(r"«\s*(.+?)\s*»|“(.+?)”|\"(.+?)\"", re.S)
+# Guillemets droits : le guillemet ouvrant est suivi d'un caractère, le fermant en est précédé, et la
+# citation tient sur une ligne. Sans ces conditions, un guillemet orphelin dans la réponse (d'opérateurs")
+# décalait l'appariement et le texte situé entre deux termes cités passait pour une citation inventée.
+_QUOTE_RE = re.compile(r"«\s*(.+?)\s*»|“(.+?)”|\"(?=\S)([^\"\n]+?)(?<=\S)\"", re.S)
 _CODE_RE = re.compile(r"`([^`\n]+)`")
+_FENCE_RE = re.compile(r"```.*?```", re.S)
 
 MIN_QUOTE_WORDS = 4   # en dessous, des guillemets encadrent souvent un simple terme ("views")
 
@@ -44,6 +48,13 @@ def normalize(text: str) -> str:
 
 def _strip_markdown(text: str) -> str:
     return re.sub(r"[*_`]", "", text)
+
+
+def _norm_text(text: str) -> str:
+    """Normalisation de comparaison : casse, Markdown, et espaces de la typographie française
+    (« No nodes selected ! » doit correspondre à « No nodes selected! »)."""
+    text = normalize(_strip_markdown(text))
+    return re.sub(r"\s+([!?;:.,)])", r"\1", text)
 
 
 def is_refusal(answer: str) -> bool:
@@ -65,8 +76,9 @@ def _doc_stem(source: str) -> str:
 
 
 def extract_quotes(answer: str, min_words: int = MIN_QUOTE_WORDS) -> list[str]:
+    """Passages entre guillemets, hors blocs de code (un bloc de code n'est pas une citation)."""
     quotes = []
-    for m in _QUOTE_RE.finditer(answer):
+    for m in _QUOTE_RE.finditer(_FENCE_RE.sub(" ", answer)):
         q = next(g for g in m.groups() if g is not None).strip()
         if len(q.split()) >= min_words:
             quotes.append(q)
@@ -83,14 +95,14 @@ def extract_code_spans(answer: str) -> list[str]:
 
 
 def _in_contexts(fragment: str, contexts_norm: list[str]) -> bool:
-    frag = normalize(_strip_markdown(fragment))
+    frag = _norm_text(fragment)
     return any(frag in c for c in contexts_norm)
 
 
 def _code_in_contexts(span: str, contexts_norm: list[str]) -> bool:
     # Même normalisation que les contextes (marqueurs Markdown retirés des deux côtés).
     bare = re.sub(r"\(\s*\)$", "", span).strip()          # xcom_push() -> xcom_push
-    candidates = {normalize(_strip_markdown(s)) for s in (span, bare, bare.lstrip("@"))}  # @task -> task
+    candidates = {_norm_text(s) for s in (span, bare, bare.lstrip("@"))}  # @task -> task
     return any(c and any(c in ctx for ctx in contexts_norm) for c in candidates)
 
 
@@ -133,7 +145,7 @@ class AnswerCheck:
 
 
 def check_answer(answer: str, contexts: list[str], retrieved_sources: list[str]) -> AnswerCheck:
-    contexts_norm = [normalize(_strip_markdown(c)) for c in contexts]
+    contexts_norm = [_norm_text(c) for c in contexts]
     retrieved = {_doc_stem(s) for s in retrieved_sources}
 
     cited = sorted(cited_documents(answer))

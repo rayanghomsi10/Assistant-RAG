@@ -16,10 +16,11 @@ def run(tmp_path, monkeypatch):
     monkeypatch.setattr(bp, "TRAINING_DATA_DIR", tmp_path)
     monkeypatch.setattr(bp, "PREFERENCES_PATH", tmp_path / "preferences.jsonl")
     monkeypatch.setattr(bp, "PROGRESS_PATH", tmp_path / "preferences_progress.jsonl")
+    monkeypatch.setattr(bp, "CANDIDATES_PATH", tmp_path / "preferences_candidates.jsonl")
     monkeypatch.setattr(bp, "load_questions", lambda: QUESTIONS)
     calls = []
 
-    def fake_process(n, q, args, nli, out, crash_on=None):
+    def fake_process(n, q, args, nli, out, cand=None, crash_on=None):
         calls.append(q["id"])
         out.write(json.dumps({"id": q["id"]}) + "\n")   # une paire par question
         out.flush()
