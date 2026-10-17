@@ -61,6 +61,15 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   
 
 Pendant le run, `nvidia-smi` doit lister un processus `python` à côté d'Ollama.
 
+Sur une carte de 8 Go, Llama 3.1 (5,8 Go), le NLI, les embeddings et le reranker se disputent
+la mémoire, et Ollama déborde alors en mémoire système. Les embeddings et le reranker, appelés
+une fois par question, peuvent passer sur le processeur pour lui laisser la place (environ 2 s
+de plus par question ; second run : environ 20 s par question au total) :
+
+```bash
+$env:EMBEDDING_DEVICE = 'cpu'; python training/build_preferences.py --samples 4
+```
+
 Le script enregistre sa progression (`preferences_progress.jsonl`) : relancé après une
 interruption (mise en veille, redémarrage), il reprend là où il s'était arrêté. `--restart`
 repart de zéro ; il est exigé si les paramètres ou les questions ont changé.
@@ -72,7 +81,8 @@ repart de zéro ; il est exigé si les paramètres ou les questions ont changé.
   inventée…) — c'est le profil d'erreurs que le DPO va corriger ;
 - `no_pair` : questions sans écart suffisant entre réponses (le modèle est constant dessus).
 
-**Inspection obligatoire avant d'entraîner** : lire 30 paires au hasard. Vérifier que la
+**Inspection obligatoire avant d'entraîner** : lire 30 paires au hasard
+(`python training/sample_pairs.py --n 30` les écrit dans `training/data/pairs_sample.md`). Vérifier que la
 réponse « chosen » est réellement meilleure, et qu'elle n'est pas systématiquement plus courte,
 plus évasive ou seulement mieux citée que la « rejected » (la récompense ne mesure pas la
 pertinence). Viser au moins 200 paires ; en dessous, augmenter `--per-chunk` ou `--samples`.

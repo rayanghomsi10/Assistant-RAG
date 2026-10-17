@@ -14,14 +14,20 @@ from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import EMBEDDING_MODEL_NAME, EMBEDDING_PASSAGE_PREFIX, EMBEDDING_QUERY_PREFIX, RERANKER_MODEL_NAME
+from config import (
+    EMBEDDING_DEVICE,
+    EMBEDDING_MODEL_NAME,
+    EMBEDDING_PASSAGE_PREFIX,
+    EMBEDDING_QUERY_PREFIX,
+    RERANKER_MODEL_NAME,
+)
 
 
 @lru_cache(maxsize=1)
 def get_embedding_model():
     """Charge le modèle d'embedding une seule fois (mise en cache)."""
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBEDDING_MODEL_NAME)
+    return SentenceTransformer(EMBEDDING_MODEL_NAME, device=EMBEDDING_DEVICE)
 
 
 def _encode(texts: list[str]) -> list[list[float]]:
@@ -58,7 +64,7 @@ def get_reranker():
     if not RERANKER_MODEL_NAME:
         return None
     from sentence_transformers import CrossEncoder
-    return CrossEncoder(RERANKER_MODEL_NAME, max_length=512)
+    return CrossEncoder(RERANKER_MODEL_NAME, max_length=512, device=EMBEDDING_DEVICE)
 
 
 def rerank_scores(query: str, passages: list[str]) -> list[float] | None:

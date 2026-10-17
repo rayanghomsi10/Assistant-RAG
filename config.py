@@ -41,6 +41,11 @@ _is_e5 = "e5" in EMBEDDING_MODEL_NAME.lower()
 EMBEDDING_QUERY_PREFIX = os.getenv("EMBEDDING_QUERY_PREFIX", "query: " if _is_e5 else "")
 EMBEDDING_PASSAGE_PREFIX = os.getenv("EMBEDDING_PASSAGE_PREFIX", "passage: " if _is_e5 else "")
 
+# Périphérique des embeddings et du reranker : vide = GPU s'il existe, sinon CPU. « cpu » libère
+# environ 1 Go de mémoire GPU pour Ollama, utile sur une carte de 8 Go pendant build_preferences.py
+# (sinon le LLM déborde en mémoire système et chaque génération devient plusieurs fois plus lente).
+EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "").strip() or None
+
 # --- Chunking ---
 # Mesuré en tokens du tokenizer d'embeddings. multilingual-e5 tronque au-delà de 512 tokens :
 # 400 laisse la place au préfixe et au fil d'Ariane de section.
