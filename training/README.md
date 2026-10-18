@@ -92,6 +92,15 @@ conservées dans `training/data/run1_20261015/`. Relecture de 30 paires : 9 où 
 vraiment meilleure, 13 où seule la citation diffère, 8 où la retenue est moins bonne ou douteuse.
 D'où la condition sur le fond et la régénération à 3 questions par chunk.
 
+Second run (18 octobre 2026, 600 questions, condition sur le fond à 0,1) : 144 paires, toutes dans
+le périmètre (l'ancienne règle en aurait formé 224 : 80 ne tenaient qu'à la citation). 54
+rejettent une réponse qui viole une contrainte dure, 90 reposent sur un écart de fond. Relecture
+de 30 paires : 19 nettement justifiées (12 sur le fond, 7 sur une règle du prompt, comme une
+paraphrase mise entre guillemets), 8 où les deux réponses disent presque la même chose mais où
+le NLI les note très différemment (0,99 contre 0,37 par exemple), 3 où la rejetée paraît plus
+complète. Relever le seuil ne corrige pas ces cas (à 0,3, 101 paires et 7 des 11 cas douteux
+restent) : la limite vient de la variabilité du NLI, pas du seuil.
+
 ## 4. Pourquoi une récompense vérifiable
 
 Entraîner contre un juge LLM de 7-8B revient à optimiser un signal bruité et biaisé : le
@@ -103,7 +112,9 @@ finale utilise en plus Ragas, que l'entraînement n'a jamais vu.
 ## 5. Entraînement (Colab / Kaggle)
 
 Ouvrir `training/dpo_colab.ipynb` sur Colab (GPU T4) ou Kaggle, téléverser
-`training/data/preferences.jsonl`, exécuter. Il faut un token Hugging Face avec l'accès accepté
+`training/data/preferences.jsonl`, exécuter. Premier passage avec `--limit 20` pour vérifier la
+chaîne sur le GPU en quelques minutes. Le notebook clone la branche `main` du dépôt GitHub : le
+code utilisé est celui qui y est publié. Il faut un token Hugging Face avec l'accès accepté
 à `meta-llama/Llama-3.1-8B-Instruct`.
 
 Lecture de `training_summary.json` :

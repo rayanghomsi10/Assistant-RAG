@@ -131,6 +131,8 @@ def parse_args(argv=None):
     p.add_argument("--max-length", type=int, default=3072)
     p.add_argument("--eval-frac", type=float, default=0.1)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--limit", type=int, default=None,
+                   help="N premières paires seulement : essai rapide de la chaîne complète (GPU, export)")
     return p.parse_args(argv)
 
 
@@ -148,8 +150,8 @@ def main(argv=None):
     compute_dtype = torch.bfloat16 if bf16 else torch.float16
 
     tokenizer = prepare_tokenizer(AutoTokenizer.from_pretrained(args.base_model))
-    pairs = load_pairs(Path(args.data))
-    kept = [r for r in pairs if sequence_length(tokenizer, r) <= args.max_length]
+    pairs = load_pairs(Path(args.data))[: args.limit] if args.limit else load_pairs(Path(args.data))
+    kept =[r for r in pairs if sequence_length(tokenizer, r) <= args.max_length]
     print(f"{len(pairs)} paires, {len(pairs) - len(kept)} écartées (> {args.max_length} tokens)")
     train_rows, eval_rows = split_pairs(kept, args.eval_frac, args.seed)
     print(f"entraînement : {len(train_rows)}  validation : {len(eval_rows)}")

@@ -259,7 +259,9 @@ que la citation suffisait à former une paire : 48 paires sur 164 ne tenaient qu
 paires relues, 8 retenaient une réponse moins bonne sur le fond. La sélection exige désormais un
 écart sur le fond quand la réponse rejetée respecte les contraintes dures, toutes les réponses
 candidates sont enregistrées (re-sélection sans régénération : `training/select_pairs.py`), et
-les paires sont regénérées à partir de 3 questions par chunk. Détails dans `training/README.md`.
+les paires ont été regénérées à partir de 3 questions par chunk : 144 paires, dont 19 nettement
+justifiées sur 30 relues. Reste une limite : le NLI note parfois très différemment deux réponses
+équivalentes. Prochaine étape : l'entraînement sur Colab. Détails dans `training/README.md`.
 
 ## CI/CD
 
