@@ -1,0 +1,2 @@
+# Génération du PDF de la documentation (docs/build_pdf.py) ; nécessite aussi Chrome ou Edge
+markdown>=3.6
