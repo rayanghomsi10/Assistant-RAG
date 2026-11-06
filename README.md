@@ -11,6 +11,11 @@ Stack gratuite et locale pour l'inférence : LLM via Ollama, embeddings et reran
 sentence-transformers, base vectorielle ChromaDB. Seul l'entraînement DPO demande un GPU de
 16 Go (Colab ou Kaggle gratuits).
 
+Documentation complète, écrite comme un cours (notions, modules, choix et alternatives,
+résultats mesurés) : [docs/wiki/index.md](docs/wiki/index.md). Le PDF
+`docs/Assistant-RAG_documentation_cours.pdf` en est généré par `python docs/build_pdf.py`
+(`pip install -r requirements-docs.txt`, Chrome ou Edge requis).
+
 ## Pourquoi ce projet
 
 Un LLM seul hallucine et a une connaissance figée. Le RAG injecte au moment de la requête des
@@ -351,11 +356,14 @@ assistant-rag/
 │   └── results/                 # un dossier par run (v1/ : archives)
 ├── training/                    # pipeline DPO (voir training/README.md)
 ├── langfuse/                    # serveur Langfuse local (docker compose) + génération des secrets
-├── docs/                        # documentation-cours du projet (PDF)
+├── docs/
+│   ├── wiki/                    # documentation-cours (Markdown, source de référence)
+│   ├── build_pdf.py             # génère le PDF depuis le wiki
+│   └── Assistant-RAG_documentation_cours.pdf   # sortie générée
 ├── tests/                       # tests unitaires (sans modèle ni GPU) + smoke test DPO
 ├── .github/workflows/           # CI/CD
 ├── Dockerfile, docker-compose.yml
-└── requirements.txt, requirements-dev.txt, requirements-train.txt
+└── requirements.txt, requirements-dev.txt, requirements-train.txt, requirements-docs.txt
 ```
 
 Non versionnés : `venv/`, `chroma_db/`, `ingestion/chunks.json`, `mlruns.db`, `.env`,
