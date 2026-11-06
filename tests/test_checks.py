@@ -56,3 +56,19 @@ def test_check_answer_detects_fabrications():
     assert chk.unsupported_quotes == ["XComs can store dataframes of any size"]
     assert chk.unsupported_code == ["push_value"]
     assert chk.code_support == 0.0
+
+
+def test_quote_extraction_edge_cases():
+    from rag_chain.checks import check_answer, extract_quotes
+    ctx = ["If this command returns No nodes selected!, no action is needed. Tasks and Operators are "
+           "used interchangeably."]
+    # Guillemet orphelin dans la réponse : pas de fausse citation entre deux termes cités.
+    answer = 'Les "tasks" et d\'opérateurs" sont interchangeables. Quand on parle d\'un "Task", on vise la tâche.'
+    assert extract_quotes(answer) == []
+    # Typographie française : espace avant le point d'exclamation.
+    assert check_answer("Si elle retourne « No nodes selected ! », rien à faire.", ctx, []).quotes_faithful
+    # Un bloc de code n'est pas une citation.
+    code = 'Exemple :\n```python\nprint("hello world from the code block")\n```\nVoilà.'
+    assert extract_quotes(code) == []
+    # Une vraie citation inventée reste détectée.
+    assert not check_answer('La doc dit "XComs are unlimited and very fast".', ctx, []).quotes_faithful

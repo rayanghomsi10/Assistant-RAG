@@ -27,7 +27,10 @@ class NliScorer:
 
     def entailment(self, premises: list[str], hypothesis: str) -> list[float]:
         with self.torch.no_grad():
-            enc = self.tokenizer(premises, [hypothesis] * len(premises), truncation="only_first",
+            # longest_first tronque le plus long des deux textes : en pratique le passage, comme
+            # only_first, mais sans échouer quand une « phrase » de la réponse (un long bloc de code
+            # sans ponctuation) dépasse à elle seule la longueur maximale.
+            enc = self.tokenizer(premises, [hypothesis] * len(premises), truncation="longest_first",
                                  max_length=512, padding=True, return_tensors="pt").to(self.device)
             probs = self.model(**enc).logits.softmax(-1)[:, self.entail_idx]
         return probs.tolist()

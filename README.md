@@ -253,6 +253,16 @@ amélioration significative sur au moins une métrique visée (`quotes_faithful`
 `false_refusal`, `citations_valid`) **et** aucune dégradation significative de
 `answer_relevancy` ni de `correct_refusal`.
 
+**État (18 octobre 2026)** : un premier run (418 questions) a donné 164 paires, toutes dans le
+périmètre ; hors périmètre, le modèle refuse toujours de la même façon. Leur relecture a montré
+que la citation suffisait à former une paire : 48 paires sur 164 ne tenaient qu'à elle, et sur 30
+paires relues, 8 retenaient une réponse moins bonne sur le fond. La sélection exige désormais un
+écart sur le fond quand la réponse rejetée respecte les contraintes dures, toutes les réponses
+candidates sont enregistrées (re-sélection sans régénération : `training/select_pairs.py`), et
+les paires ont été regénérées à partir de 3 questions par chunk : 144 paires, dont 19 nettement
+justifiées sur 30 relues. Reste une limite : le NLI note parfois très différemment deux réponses
+équivalentes. Prochaine étape : l'entraînement sur Colab. Détails dans `training/README.md`.
+
 ## CI/CD
 
 `.github/workflows/ci-cd.yml` : à chaque push et pull request, lint (ruff), tests unitaires sans

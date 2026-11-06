@@ -129,3 +129,41 @@ def test_chat_template_matches_ollama_format():
     assert out == ("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nS<|eot_id|>"
                    "<|start_header_id|>user<|end_header_id|>\n\nQ<|eot_id|>"
                    "<|start_header_id|>assistant<|end_header_id|>\n\n")
+
+
+def test_select_pair_requires_a_substantive_gap():
+    from training.build_preferences import substance_margin
+    from training.reward import Reward
+
+    def reward(total, grounding, cites, hard_fail=None):
+        comps = {} if hard_fail else {"grounding": grounding, "cites_source": cites, "code_support": 1.0,
+                                      "has_citation": cites, "concision": 1.0}
+        return Reward(total=total, hard_fail=hard_fail, components=comps)
+
+    best = ("cite", reward(0.95, 0.90, 1.0))
+    citation_only = ("sans citation", reward(0.65, 0.92, 0.0))   # même fond, seule la citation manque
+    worse = ("moins ancrée", reward(0.55, 0.50, 0.0))
+    invented = ("inventée", reward(0.0, 0, 0, hard_fail="fabricated_quote"))
+    assert substance_margin(best[1], citation_only[1]) < 0.05
+    # Seule une réponse qui ne diffère que par la citation : pas de paire.
+    assert select_pair([best, citation_only], 0.2, min_substance=0.1) is None
+    # Une réponse moins bien ancrée existe : elle devient la rejetée, même si elle n'est pas la pire.
+    assert select_pair([best, citation_only, worse], 0.2, 0.1)[1][0] == "moins ancrée"
+    # Une contrainte dure suffit, sans condition sur le fond.
+    assert select_pair([best, citation_only, invented], 0.2, 0.1)[1][0] == "inventée"
+    # Sans exigence sur le fond (comportement du premier run), la citation suffit.
+    assert select_pair([best, citation_only], 0.2, None)[1][0] == "sans citation"
+
+
+def test_reselect_from_saved_candidates():
+    from training.reward import Reward
+    from training.select_pairs import reselect
+    r = lambda total, g, c: Reward(total=total, components={"grounding": g, "cites_source": c,  # noqa: E731
+                                                              "code_support": 1.0, "has_citation": c, "concision": 1.0})
+    rec = {"id": "q1", "type": "in_scope", "question": "Q ?", "prompt": [{"role": "user", "content": "Q ?"}],
+           "candidates": [{"answer": "A", "reward": r(0.95, 0.9, 1.0).to_dict()},
+                          {"answer": "B", "reward": r(0.65, 0.92, 0.0).to_dict()}]}
+    pairs, stats = reselect([rec], 0.2, 0.1)
+    assert pairs == [] and stats["no_pair"] == 1
+    pairs, stats = reselect([rec], 0.2, None)
+    assert [p["rejected"][0]["content"] for p in pairs] == ["B"] and stats["pairs_in_scope"] == 1
